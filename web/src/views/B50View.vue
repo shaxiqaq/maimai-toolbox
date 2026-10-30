@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { summarizeB50 } from "@mt/shared";
-import { computed, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import RecordCard from "@/components/RecordCard.vue";
 import { useCatalogStore } from "@/stores/catalog";
 import { usePlayerStore, type LookupKind } from "@/stores/player";
@@ -35,6 +35,38 @@ function forget() {
   player.forgetToken();
   token.value = "";
 }
+
+// ---- Image export ----
+const imageUrl = ref<string | null>(null);
+const imageError = ref<string | null>(null);
+const rendering = ref(false);
+const imageName = computed(() => `B50-${player.b50?.nickname || player.b50?.username || "player"}.png`);
+
+async function exportImage() {
+  if (!player.b50 || !catalog.catalog) return;
+  rendering.value = true;
+  imageError.value = null;
+  try {
+    const { renderB50Image } = await import("@/composables/b50Image");
+    const blob = await renderB50Image(player.b50, new Map(catalog.catalog.songs.map((s) => [s.id, s])));
+    if (imageUrl.value) URL.revokeObjectURL(imageUrl.value);
+    imageUrl.value = URL.createObjectURL(blob);
+  } catch (err) {
+    imageError.value = (err as Error).message;
+  } finally {
+    rendering.value = false;
+  }
+}
+
+// A new lookup makes the old image stale.
+watch(
+  () => player.b50,
+  () => {
+    if (imageUrl.value) URL.revokeObjectURL(imageUrl.value);
+    imageUrl.value = null;
+  },
+);
+onBeforeUnmount(() => imageUrl.value && URL.revokeObjectURL(imageUrl.value));
 
 onMounted(() => {
   void catalog.load();
@@ -112,6 +144,20 @@ onMounted(() => {
         <p v-if="player.b50.unmatched" class="note muted">
           有 {{ player.b50.unmatched }} 条成绩对应的谱面不在本站曲库中（可能是新曲尚未同步），未计入 B50。
         </p>
+        <div class="export">
+          <button type="button" class="secondary" :disabled="rendering || !catalog.catalog" @click="exportImage">
+            {{ rendering ? "生成中…" : "生成 B50 图片" }}
+          </button>
+          <span v-if="imageError" class="err">{{ imageError }}</span>
+        </div>
+      </section>
+
+      <section v-if="imageUrl" class="card image-preview">
+        <div class="image-actions">
+          <a :href="imageUrl" :download="imageName" class="secondary">下载图片</a>
+          <span class="muted">手机上也可以长按图片保存</span>
+        </div>
+        <img :src="imageUrl" alt="B50 图片预览" />
       </section>
 
       <div class="tabs">
@@ -220,6 +266,54 @@ onMounted(() => {
 
 .badge.source {
   margin-left: auto;
+}
+
+.export {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.secondary {
+  display: inline-block;
+  padding: 6px 14px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.secondary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.err {
+  color: var(--warn);
+  font-size: 13px;
+}
+
+.image-preview {
+  padding: 12px;
+  margin-bottom: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.image-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.image-preview img {
+  width: 100%;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
 }
 
 .state {

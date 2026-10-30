@@ -35,5 +35,8 @@ pnpm dev         # 同时启动 server(:8787) 与 web(:5173)
 
 - `GET /api/health`
 - `GET /api/catalog` — 合并后的曲库（支持 ETag / 304）
+- `GET /api/player/b50?username=|qq=` — 水鱼公开查询 B50
+- `POST /api/lxns/scores`（请求头 `X-User-Token`）— 落雪个人密钥获取全部成绩；密钥只转发、不记录
+- `GET /api/jacket/{id}.png` — 曲绘，首次从落雪获取后缓存在 `DATA_DIR/jackets/`
 
 设计与路线见 `../deepdive/00-复刻设计.md`。

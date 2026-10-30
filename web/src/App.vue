@@ -10,6 +10,8 @@ const links = [
   { to: "/records", label: "成绩" },
   { to: "/progress", label: "进度" },
   { to: "/recommend", label: "推荐" },
+  { to: "/calculator", label: "计算器" },
+  { to: "/lottery", label: "抽歌" },
   { to: "/songs", label: "曲库" },
 ];
 </script>

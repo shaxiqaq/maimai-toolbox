@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { getCatalog, rebuildCatalog } from "./catalog";
 import { config } from "./config";
+import { getJacket, parseJacketId } from "./jackets";
 import { fetchLxnsScores, isPlausibleToken } from "./lxns";
 import { fetchB50, parsePlayerQuery, PlayerLookupError } from "./players";
 import { syncSources } from "./sources";
@@ -8,6 +9,20 @@ import { syncSources } from "./sources";
 export const app = new Hono().basePath("/api");
 
 app.get("/health", (c) => c.json({ ok: true, catalog: getCatalog()?.catalog.builtAt ?? null }));
+
+app.get("/jacket/:file", async (c) => {
+  const id = parseJacketId(c.req.param("file"));
+  if (id == null) return c.json({ error: "bad jacket id" }, 400);
+  try {
+    const png = await getJacket(id);
+    if (!png) return c.body(null, 404);
+    c.header("Content-Type", "image/png");
+    c.header("Cache-Control", "public, max-age=2592000, immutable");
+    return c.body(new Uint8Array(png));
+  } catch {
+    return c.body(null, 502);
+  }
+});
 
 app.get("/catalog", (c) => {
   const cached = getCatalog();
