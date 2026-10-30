@@ -1,9 +1,18 @@
 <script setup lang="ts">
-import { chartPreviewUrl, DIFFICULTY_NAMES } from "@mt/shared";
-import { computed, onMounted } from "vue";
+import {
+  chartPreviewUrl,
+  constantChanges,
+  DIFFICULTY_NAMES,
+  fetchConstantsAt,
+  popularityRanks,
+  songPlayCount,
+  type ConstantChange,
+} from "@mt/shared";
+import { computed, onMounted, ref, watch } from "vue";
 import FavoriteButton from "@/components/FavoriteButton.vue";
 import LevelPill from "@/components/LevelPill.vue";
 import SongJacket from "@/components/SongJacket.vue";
+import { cachedJson } from "@/data/cachedJson";
 import { useCatalogStore } from "@/stores/catalog";
 
 const props = defineProps<{ id: string }>();
@@ -12,6 +21,54 @@ onMounted(() => void store.load());
 
 const song = computed(() => store.getSong(Number(props.id)));
 const isUtage = computed(() => song.value?.type === "UTAGE");
+
+const ranks = computed(() => (store.catalog ? popularityRanks(store.catalog.songs) : new Map<number, number>()));
+const popularity = computed(() =>
+  song.value && !isUtage.value ? { rank: ranks.value.get(song.value.id), plays: songPlayCount(song.value) } : null,
+);
+
+// ---- Constant history: one LXNS request per DX-era version, so it is loaded on demand and cached. ----
+const HISTORY_MAX_AGE = 7 * 86400_000;
+const FIRST_DX_VERSION = 20000;
+const history = ref<ConstantChange[] | null>(null);
+const historyState = ref<"idle" | "loading" | "error">("idle");
+const historyDone = ref(0);
+const historyTotal = computed(() => store.catalog?.gameVersions.filter((v) => v.version >= FIRST_DX_VERSION).length ?? 0);
+const canLoadHistory = computed(() => !!song.value?.lxnsId && !isUtage.value && historyTotal.value > 0);
+
+async function loadHistory() {
+  const s = song.value;
+  if (!s?.lxnsId || !store.catalog) return;
+  const versions = store.catalog.gameVersions.filter((v) => v.version >= FIRST_DX_VERSION);
+  const chartType = s.type === "DX" ? "dx" : "standard";
+  historyState.value = "loading";
+  historyDone.value = 0;
+  try {
+    const snapshots = await cachedJson(`/__history/${s.lxnsId}-${chartType}-${versions.length}`, HISTORY_MAX_AGE, async () => {
+      const out = [];
+      for (const version of versions) {
+        // Sequential with a short gap keeps us well under LXNS's rate limit.
+        out.push({ version, constants: await fetchConstantsAt(s.lxnsId!, chartType, version.version) });
+        historyDone.value++;
+        await new Promise((r) => setTimeout(r, 250));
+      }
+      return out;
+    });
+    if (song.value?.id !== s.id) return;
+    history.value = constantChanges(snapshots);
+    historyState.value = "idle";
+  } catch {
+    if (song.value?.id === s.id) historyState.value = "error";
+  }
+}
+
+watch(
+  () => props.id,
+  () => {
+    history.value = null;
+    historyState.value = "idle";
+  },
+);
 
 function fmt(n: number, digits: number): string {
   return n.toFixed(digits);
@@ -54,6 +111,10 @@ function fmt(n: number, digits: number): string {
             <dt>分类</dt><dd>{{ song.genre }}</dd>
             <dt>版本</dt><dd>{{ song.version }}</dd>
             <dt v-if="song.releaseDate">日期</dt><dd v-if="song.releaseDate">{{ song.releaseDate }}</dd>
+            <template v-if="popularity?.rank">
+              <dt>热度</dt>
+              <dd title="按水鱼查分器用户上传的游玩记录数排名">第 {{ popularity.rank }} 名 · {{ popularity.plays }} 条记录</dd>
+            </template>
           </dl>
         </div>
       </section>
@@ -96,6 +157,40 @@ function fmt(n: number, digits: number): string {
             <div v-if="c.charter && c.charter !== '-'" class="charter muted">谱师：{{ c.charter }}</div>
           </article>
         </div>
+      </section>
+
+      <section v-if="canLoadHistory" class="block">
+        <h2>定数变化</h2>
+        <button v-if="!history && historyState !== 'loading'" type="button" class="load" @click="loadHistory">
+          {{ historyState === "error" ? "加载失败，重试" : "查看各版本定数" }}
+        </button>
+        <p v-else-if="historyState === 'loading'" class="muted small">正在读取落雪各版本数据… {{ historyDone }}/{{ historyTotal }}</p>
+        <template v-if="history">
+          <p v-if="history.length <= 1" class="muted small">自 DX 以来定数没有变化。</p>
+          <div class="table-wrap">
+            <table class="history">
+              <thead>
+                <tr>
+                  <th>版本</th>
+                  <th v-for="(name, d) in DIFFICULTY_NAMES" :key="d">{{ name.slice(0, 3) }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(h, i) in [...history].reverse()" :key="h.version.version">
+                  <td class="ver">{{ h.version.title }}</td>
+                  <td
+                    v-for="(_, d) in DIFFICULTY_NAMES"
+                    :key="d"
+                    :class="{ moved: i !== history.length - 1 && h.changed.includes(d) }"
+                  >
+                    {{ h.constants[d] !== undefined ? fmt(h.constants[d]!, 1) : "" }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="muted small">高亮为该版本变动的定数。数据来自落雪查分器。</p>
+        </template>
       </section>
     </template>
   </main>
@@ -229,6 +324,49 @@ dd {
 
 .stats b {
   font-size: 15px;
+}
+
+.load {
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.small {
+  font-size: 12px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.history {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.history th,
+.history td {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.history .ver,
+.history th:first-child {
+  text-align: left;
+  white-space: normal;
+}
+
+.history .moved {
+  color: var(--accent);
+  font-weight: 700;
 }
 
 .notes,

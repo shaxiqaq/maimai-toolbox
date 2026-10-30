@@ -1,4 +1,6 @@
-/** Song catalog served by our own backend. Merged from Diving-Fish music_data/chart_stats and LXNS song/alias lists. */
+import type { GameVersion } from "./history";
+
+/** Song catalog, built in the browser from Diving-Fish music_data/chart_stats and LXNS song/alias lists. */
 
 export type SongType = "SD" | "DX" | "UTAGE";
 
@@ -63,6 +65,8 @@ export interface Catalog {
   /** Versions in release order, oldest first. */
   versions: string[];
   genres: string[];
+  /** LXNS game versions (number + title), oldest first; used to look up constant history. */
+  gameVersions: GameVersion[];
 }
 
 export function baseSongId(id: number): number {

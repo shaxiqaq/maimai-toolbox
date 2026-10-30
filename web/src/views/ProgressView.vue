@@ -122,6 +122,10 @@ onMounted(() => {
           </select>
         </header>
         <label class="check"><input v-model="includeReMaster" type="checkbox" /> 包含 Re:Master</label>
+        <p class="muted plate-link">
+          按版本粗略统计。要看将 / 極 / 神 / 舞舞的官方条件和精确进度，去
+          <RouterLink to="/collections?kind=plate">牌子与收藏品</RouterLink>。
+        </p>
 
         <ul class="versions">
           <li v-for="v in byVersion" :key="v.version">
@@ -239,6 +243,15 @@ onMounted(() => {
 .num {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+.plate-link {
+  margin: 0 0 8px;
+  font-size: 12px;
+}
+
+.plate-link a {
+  color: var(--accent);
 }
 
 .check {

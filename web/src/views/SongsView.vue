@@ -4,7 +4,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router";
 import LevelPill from "@/components/LevelPill.vue";
 import SongJacket from "@/components/SongJacket.vue";
-import { EMPTY_FILTER, searchSongs, type SongFilter } from "@mt/shared";
+import { EMPTY_FILTER, searchSongs, songPlayCount, type SongFilter } from "@mt/shared";
 import { useCatalogStore } from "@/stores/catalog";
 
 const PAGE_SIZE = 60;
@@ -26,20 +26,28 @@ function filterFromQuery(): SongFilter {
 }
 
 const filter = reactive<SongFilter>(filterFromQuery());
+/** "" keeps search relevance / newest first; "hot" orders by uploaded play count. */
+const sort = ref(route.query.sort === "hot" ? "hot" : "");
 const shown = ref(PAGE_SIZE);
 
 // Keep the filter in the URL so results survive back-navigation and can be shared.
 watch(
-  filter,
-  (f) => {
+  [filter, sort],
+  ([f, s]) => {
     shown.value = PAGE_SIZE;
-    const query = Object.fromEntries(Object.entries(f).filter(([, v]) => v !== ""));
+    const query = Object.fromEntries(Object.entries({ ...f, sort: s }).filter(([, v]) => v !== ""));
     void router.replace({ query });
   },
   { deep: true },
 );
 
-const results = computed(() => (store.catalog ? searchSongs(store.catalog.songs, filter) : []));
+const results = computed(() => {
+  if (!store.catalog) return [];
+  const found = searchSongs(store.catalog.songs, filter);
+  if (sort.value !== "hot") return found;
+  const plays = new Map(found.map((s) => [s.id, songPlayCount(s)]));
+  return [...found].sort((a, b) => plays.get(b.id)! - plays.get(a.id)!);
+});
 const visible = computed(() => results.value.slice(0, shown.value));
 
 const levels = computed(() => {
@@ -89,6 +97,10 @@ onBeforeUnmount(() => observer?.disconnect());
         <select v-model="filter.genre" class="field">
           <option value="">全部分类</option>
           <option v-for="g in store.catalog?.genres ?? []" :key="g" :value="g">{{ g }}</option>
+        </select>
+        <select v-model="sort" class="field" title="热度按水鱼查分器用户上传的游玩记录数计算">
+          <option value="">默认排序</option>
+          <option value="hot">按热度</option>
         </select>
         <select v-model="filter.version" class="field">
           <option value="">全部版本</option>
@@ -150,7 +162,7 @@ onBeforeUnmount(() => observer?.disconnect());
 
 @media (min-width: 720px) {
   .selects {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 }
 

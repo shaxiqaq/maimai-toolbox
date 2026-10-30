@@ -56,6 +56,7 @@ export interface LxSong {
 
 export interface LxSongList {
   songs: LxSong[];
+  versions?: { title: string; version: number }[];
 }
 
 export interface LxAliasList {
@@ -134,5 +135,9 @@ export function buildCatalog(raw: RawSources): Catalog {
   );
   const genres = [...new Set(songs.map((s) => s.genre))];
 
-  return { builtAt: new Date().toISOString(), songs, versions, genres };
+  const gameVersions = (raw.lxSongs.versions ?? [])
+    .map((v) => ({ version: v.version, title: v.title }))
+    .sort((a, b) => a.version - b.version);
+
+  return { builtAt: new Date().toISOString(), songs, versions, genres, gameVersions };
 }

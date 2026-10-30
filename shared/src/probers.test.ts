@@ -120,6 +120,7 @@ const catalog: Catalog = {
   builtAt: "",
   versions: [],
   genres: [],
+  gameVersions: [],
   songs: [
     song(8, false, [chart(0, "5", 5), chart(1, "7", 7.2), chart(2, "10", 10.2), chart(3, "12", 12.4)]),
     song(11663, true, [chart(0, "7", 7), chart(1, "9", 9), chart(2, "12", 12), chart(3, "13+", 13.7)]),

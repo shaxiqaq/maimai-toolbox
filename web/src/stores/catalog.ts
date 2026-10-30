@@ -6,12 +6,14 @@ import { computed, ref, shallowRef } from "vue";
  * The catalog is merged in the browser from the four public sources and kept in Cache Storage.
  * A fresh copy is used as is; a stale one is shown immediately while a new one is built behind it.
  */
-const CACHE_NAME = "mt-catalog-v1";
+const CACHE_NAME = "mt-catalog-v2"; // v2: catalog gained gameVersions
+const OLD_CACHES = ["mt-catalog-v1"];
 const CACHE_KEY = "/__catalog.json";
 const FRESH_MS = 6 * 3600_000;
 
 async function readCached(): Promise<{ catalog: Catalog; age: number } | null> {
   try {
+    for (const name of OLD_CACHES) void caches.delete(name);
     const cache = await caches.open(CACHE_NAME);
     const res = await cache.match(CACHE_KEY);
     if (!res) return null;

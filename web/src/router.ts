@@ -13,6 +13,7 @@ export const router = createRouter({
     { path: "/favorites", name: "favorites", component: () => import("./views/FavoritesView.vue") },
     { path: "/arcades", name: "arcades", component: () => import("./views/ArcadesView.vue") },
     { path: "/bingo", name: "bingo", component: () => import("./views/BingoView.vue") },
+    { path: "/collections", name: "collections", component: () => import("./views/CollectionsView.vue") },
     { path: "/avatar", name: "avatar", component: () => import("./views/AvatarView.vue") },
     { path: "/login", name: "login", component: () => import("./views/LoginView.vue") },
     { path: "/account", name: "account", component: () => import("./views/AccountView.vue") },

@@ -12,6 +12,7 @@ const features: Feature[] = [
   { title: "B50", desc: "查询 Best 50 与 Rating", to: "/b50" },
   { title: "成绩", desc: "全部成绩与筛选（落雪密钥）", to: "/records" },
   { title: "完成度", desc: "等级分布与版本完成进度", to: "/progress" },
+  { title: "牌子与收藏品", desc: "将/極/神/舞舞进度、称号、头像、背景", to: "/collections" },
   { title: "上分推荐", desc: "按 B50 底分推荐目标谱面", to: "/recommend" },
   { title: "计算器", desc: "达成率、容错与 Rating", to: "/calculator" },
   { title: "随机抽歌", desc: "按条件随机选曲", to: "/lottery" },
