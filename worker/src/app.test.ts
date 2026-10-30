@@ -328,3 +328,107 @@ describe("chart tags", () => {
     assert.equal((await a("PUT", "/tags/abc/3/spin")).status, 400);
   });
 });
+
+describe("account management", () => {
+  it("changes the password and signs out other devices only", async () => {
+    const a = await signedIn("acct-a");
+    const other = client();
+    assert.equal((await other("POST", "/auth/login", { username: "acct-a", password: "password123" })).status, 200);
+
+    assert.equal((await a("POST", "/auth/password", { current: "wrong-pass", next: "newpassword1" })).status, 401);
+    assert.equal((await a("POST", "/auth/password", { current: "password123", next: "short" })).status, 400);
+    assert.equal((await a("POST", "/auth/password", { current: "password123", next: "newpassword1" })).status, 200);
+
+    assert.equal((await a("GET", "/auth/me")).body.user.username, "acct-a", "this device stays signed in");
+    assert.equal((await other("GET", "/auth/me")).body.user, null, "other devices are signed out");
+    assert.equal((await client()("POST", "/auth/login", { username: "acct-a", password: "password123" })).status, 401);
+    assert.equal((await client()("POST", "/auth/login", { username: "acct-a", password: "newpassword1" })).status, 200);
+  });
+
+  it("deletes the account with everything attached to it", async () => {
+    const a = await signedIn("acct-b");
+    const friend = await signedIn("acct-c");
+    const aId = (await a("GET", "/auth/me")).body.user.id;
+    const folder = (await a("POST", "/favorites", { name: "x" })).body;
+    await a("PUT", `/favorites/${folder.id}/songs/834`);
+    await a("PUT", "/tags/99001/3/spin");
+    await a("PUT", "/snapshot", { source: "lxns", nickname: "n", full: true, rating: 1, records: [[834, 3, 100, 0, "", ""]], fetchedAt: "t" });
+    await a("POST", "/friends/requests", { username: "acct-c" });
+    await friend("POST", `/friends/requests/${aId}/accept`);
+
+    assert.equal((await a("POST", "/auth/delete", { password: "nope-nope" })).status, 401);
+    assert.equal((await a("POST", "/auth/delete", { password: "password123" })).status, 200);
+
+    assert.equal((await a("GET", "/auth/me")).body.user, null);
+    assert.equal((await client()("POST", "/auth/login", { username: "acct-b", password: "password123" })).status, 401);
+    assert.deepEqual((await friend("GET", "/friends")).body.friends, []);
+    assert.equal((await client()("GET", "/tags")).body["99001:3"], undefined);
+    for (const table of ["fav_folders", "fav_songs", "score_snapshots", "chart_tag_votes", "friendships", "sessions"]) {
+      const where = table === "fav_songs" ? `folder_id = '${folder.id}'` : table === "friendships" ? `user_id = ${aId} OR friend_id = ${aId}` : `user_id = ${aId}`;
+      assert.equal((await testDb.first<{ n: number }>(`SELECT COUNT(*) AS n FROM ${table} WHERE ${where}`))!.n, 0, table);
+    }
+  });
+
+  it("rate-limits wrong current passwords", async () => {
+    const a = await signedIn("acct-d");
+    let last = 0;
+    for (let i = 0; i < 11; i++) last = (await a("POST", "/auth/password", { current: "wrong-pass", next: "newpassword1" })).status;
+    assert.equal(last, 429);
+  });
+});
+
+describe("announcements and feedback", () => {
+  const ADMIN_ENV = { ...ENV, ADMIN_USERNAMES: "Boss, other" };
+  async function as(name: string) {
+    const api = client(ADMIN_ENV);
+    const [code] = await createInvites(1);
+    assert.equal((await api("POST", "/auth/register", { username: name, password: "password123", invite: code })).status, 200);
+    return api;
+  }
+
+  it("lets admins post and delete announcements that everyone can read", async () => {
+    const admin = await as("boss");
+    const user = await as("plain-user");
+    assert.equal((await admin("GET", "/auth/me")).body.isAdmin, true, "admin names are case-insensitive");
+    assert.equal((await user("GET", "/auth/me")).body.isAdmin, false);
+
+    assert.equal((await user("POST", "/admin/announcements", { title: "x", body: "y" })).status, 403);
+    assert.equal((await admin("POST", "/admin/announcements", { title: "", body: "y" })).status, 400);
+    const posted = (await admin("POST", "/admin/announcements", { title: "维护", body: "今晚维护" })).body;
+    assert.equal(posted.title, "维护");
+    assert.equal((await client()("GET", "/announcements")).body[0].body, "今晚维护");
+
+    await admin("DELETE", `/admin/announcements/${posted.id}`);
+    assert.deepEqual((await client()("GET", "/announcements")).body, []);
+  });
+
+  it("accepts feedback from anyone and lets admins reply", async () => {
+    const admin = await as("other");
+    const user = await as("fb-user");
+    const anon = client(ADMIN_ENV);
+
+    assert.equal((await user("POST", "/feedback", { body: "  " })).status, 400);
+    assert.equal((await user("POST", "/feedback", { body: "B50 页打不开", page: "/b50" })).status, 201);
+    assert.equal((await anon("POST", "/feedback", { body: "注册不了", contact: "qq 123" })).status, 201);
+    assert.equal((await anon("GET", "/feedback/mine")).status, 401);
+    assert.equal((await user("GET", "/admin/feedback")).status, 403);
+
+    const inbox = (await admin("GET", "/admin/feedback")).body as { id: number; username: string | null; body: string }[];
+    const mine = inbox.find((f) => f.body === "B50 页打不开")!;
+    assert.equal(mine.username, "fb-user");
+    assert.equal(inbox.find((f) => f.body === "注册不了")!.username, null);
+
+    await admin("PATCH", `/admin/feedback/${mine.id}`, { status: "done", reply: "已修复" });
+    const [seen] = (await user("GET", "/feedback/mine")).body;
+    assert.deepEqual([seen.status, seen.reply], ["done", "已修复"]);
+    assert.equal(((await admin("GET", "/admin/feedback")).body as { id: number }[]).some((f) => f.id === mine.id), false, "done items leave the open list");
+    assert.equal(((await admin("GET", "/admin/feedback?status=all")).body as { id: number }[]).some((f) => f.id === mine.id), true);
+  });
+
+  it("rate-limits feedback per client", async () => {
+    const anon = client();
+    let last = 0;
+    for (let i = 0; i < 11; i++) last = (await anon("POST", "/feedback", { body: `spam ${i}` })).status;
+    assert.equal(last, 429);
+  });
+});

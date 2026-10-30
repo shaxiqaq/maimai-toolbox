@@ -16,8 +16,10 @@ import {
 } from "./archives";
 import {
   AuthError,
+  changePassword,
   checkRateLimit,
   createSession,
+  deleteAccount,
   deleteSession,
   login,
   recordAttempt,
@@ -38,6 +40,16 @@ import {
   requestFriend,
   saveSnapshot,
 } from "./friends";
+import {
+  allFeedback,
+  createAnnouncement,
+  deleteAnnouncement,
+  FeedbackError,
+  listAnnouncements,
+  myFeedback,
+  sendFeedback,
+  updateFeedback,
+} from "./feedback";
 import { addVote, myVotes, parseChart, parseTag, removeVote, tagCounts, TagError } from "./tags";
 import { addSong, createFolder, deleteFolder, FavoritesError, listFolders, removeSong, renameFolder } from "./favorites";
 
@@ -49,6 +61,8 @@ export interface Bindings {
   ALLOWED_ORIGINS?: string;
   /** "1" lets anyone register; otherwise sign-up needs an invite code. */
   OPEN_REGISTRATION?: string;
+  /** Comma-separated usernames that can post announcements and read feedback. */
+  ADMIN_USERNAMES?: string;
 }
 
 type Env = { Bindings: Bindings; Variables: { db: Db; user: User | null } };
@@ -81,7 +95,7 @@ export function createApp(dbFor: (env: Bindings) => Db) {
   });
 
   app.onError((err, c) => {
-    if (err instanceof AuthError || err instanceof FavoritesError || err instanceof ArchiveError || err instanceof FriendsError || err instanceof TagError) {
+    if (err instanceof AuthError || err instanceof FavoritesError || err instanceof ArchiveError || err instanceof FriendsError || err instanceof TagError || err instanceof FeedbackError) {
       return c.json({ error: err.message }, err.status);
     }
     if (err instanceof HTTPException) return err.getResponse();
@@ -132,8 +146,22 @@ export function createApp(dbFor: (env: Bindings) => Db) {
   }
 
   const inviteRequired = (c: C) => c.env?.OPEN_REGISTRATION !== "1";
+  const isAdmin = (c: C, user: User | null) =>
+    !!user &&
+    (c.env?.ADMIN_USERNAMES ?? "")
+      .split(",")
+      .map((s: string) => s.trim().toLowerCase())
+      .includes(user.username.toLowerCase());
 
-  app.get("/auth/me", (c) => c.json({ user: c.get("user"), inviteRequired: inviteRequired(c) }));
+  function requireAdmin(c: C): User {
+    const user = requireUser(c);
+    if (!isAdmin(c, user)) throw new FeedbackError(403, "需要管理员权限");
+    return user;
+  }
+
+  app.get("/auth/me", (c) =>
+    c.json({ user: c.get("user"), inviteRequired: inviteRequired(c), isAdmin: isAdmin(c, c.get("user")) }),
+  );
 
   app.post("/auth/register", async (c) => {
     const body = await jsonBody(c);
@@ -154,6 +182,33 @@ export function createApp(dbFor: (env: Bindings) => Db) {
       for (const k of keys) await recordAttempt(db(c), k);
       throw err;
     }
+  });
+
+  /** Wrong current passwords count like failed logins, so these cannot be used to guess a password. */
+  async function withPasswordCheck<T>(c: C, userId: number, run: () => Promise<T>): Promise<T> {
+    const key = `password:${userId}`;
+    await checkRateLimit(db(c), key);
+    try {
+      return await run();
+    } catch (err) {
+      if (err instanceof AuthError && err.status === 401) await recordAttempt(db(c), key);
+      throw err;
+    }
+  }
+
+  app.post("/auth/password", async (c) => {
+    const user = requireUser(c);
+    const body = await jsonBody(c);
+    await withPasswordCheck(c, user.id, () => changePassword(db(c), user.id, body.current, body.next, getCookie(c, SESSION_COOKIE)));
+    return c.json({ ok: true });
+  });
+
+  app.post("/auth/delete", async (c) => {
+    const user = requireUser(c);
+    const body = await jsonBody(c);
+    await withPasswordCheck(c, user.id, () => deleteAccount(db(c), user.id, body.password));
+    deleteCookie(c, SESSION_COOKIE, { path: "/" });
+    return c.json({ ok: true });
   });
 
   app.post("/auth/logout", async (c) => {
@@ -185,6 +240,53 @@ export function createApp(dbFor: (env: Bindings) => Db) {
 
   app.delete("/favorites/:folderId/songs/:songId", async (c) => {
     await removeSong(db(c), requireUser(c).id, c.req.param("folderId"), Number(c.req.param("songId")));
+    return c.json({ ok: true });
+  });
+
+  // ---- Announcements and feedback ----
+
+  const idParam = (c: C) => {
+    const id = Number(c.req.param("id"));
+    if (!Number.isInteger(id) || id <= 0) throw new FeedbackError(400, "ID 无效");
+    return id;
+  };
+
+  app.get("/announcements", async (c) => {
+    c.header("Cache-Control", "public, max-age=60");
+    return c.json(await listAnnouncements(db(c)));
+  });
+
+  app.post("/admin/announcements", async (c) => {
+    requireAdmin(c);
+    return c.json(await createAnnouncement(db(c), await jsonBody(c)), 201);
+  });
+
+  app.delete("/admin/announcements/:id", async (c) => {
+    requireAdmin(c);
+    await deleteAnnouncement(db(c), idParam(c));
+    return c.json({ ok: true });
+  });
+
+  app.post("/feedback", async (c) => {
+    const body = await jsonBody(c);
+    // Open to everyone (including people who cannot sign in), so every submission counts toward a per-IP limit.
+    const key = `feedback:${clientKey(c)}`;
+    await checkRateLimit(db(c), key);
+    await recordAttempt(db(c), key);
+    await sendFeedback(db(c), c.get("user")?.id ?? null, body);
+    return c.json({ ok: true }, 201);
+  });
+
+  app.get("/feedback/mine", async (c) => c.json(await myFeedback(db(c), requireUser(c).id)));
+
+  app.get("/admin/feedback", async (c) => {
+    requireAdmin(c);
+    return c.json(await allFeedback(db(c), c.req.query("status")));
+  });
+
+  app.patch("/admin/feedback/:id", async (c) => {
+    requireAdmin(c);
+    await updateFeedback(db(c), idParam(c), await jsonBody(c));
     return c.json({ ok: true });
   });
 

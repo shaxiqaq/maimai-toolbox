@@ -67,6 +67,45 @@ async function copy(shareId: string) {
   }
 }
 
+// ---- Security ----
+const pw = ref({ current: "", next: "", again: "" });
+const pwMsg = ref<{ ok: boolean; text: string } | null>(null);
+const pwBusy = ref(false);
+
+async function changePassword() {
+  pwMsg.value = null;
+  if (pw.value.next !== pw.value.again) {
+    pwMsg.value = { ok: false, text: "两次输入的新密码不一致" };
+    return;
+  }
+  pwBusy.value = true;
+  try {
+    await auth.changePassword(pw.value.current, pw.value.next);
+    pw.value = { current: "", next: "", again: "" };
+    pwMsg.value = { ok: true, text: "密码已修改，其他设备上的登录已失效" };
+  } catch (err) {
+    pwMsg.value = { ok: false, text: (err as Error).message };
+  } finally {
+    pwBusy.value = false;
+  }
+}
+
+const delPassword = ref("");
+const delConfirm = ref("");
+const delError = ref<string | null>(null);
+
+async function deleteAccount() {
+  delError.value = null;
+  if (!confirm("确定注销账号？此操作无法撤销。")) return;
+  try {
+    await auth.deleteAccount(delPassword.value);
+    favorites.reset();
+    await router.replace("/");
+  } catch (err) {
+    delError.value = (err as Error).message;
+  }
+}
+
 async function logout() {
   await auth.logout();
   favorites.reset();
@@ -91,7 +130,11 @@ onMounted(() => {
     <template v-if="auth.user">
       <header class="head">
         <h1>{{ auth.user.username }}</h1>
-        <button type="button" class="link" @click="logout">退出登录</button>
+        <span class="head-links">
+          <RouterLink v-if="auth.isAdmin" to="/admin" class="link">管理后台</RouterLink>
+          <RouterLink to="/feedback" class="link">意见反馈</RouterLink>
+          <button type="button" class="link" @click="logout">退出登录</button>
+        </span>
       </header>
 
       <section class="card block">
@@ -123,6 +166,31 @@ onMounted(() => {
           </li>
         </ul>
       </section>
+
+      <section class="card block">
+        <h2>修改密码</h2>
+        <form class="form" @submit.prevent="changePassword">
+          <input v-model="pw.current" class="field" type="password" autocomplete="current-password" placeholder="当前密码" required />
+          <input v-model="pw.next" class="field" type="password" autocomplete="new-password" minlength="8" maxlength="128" placeholder="新密码（至少 8 位）" required />
+          <input v-model="pw.again" class="field" type="password" autocomplete="new-password" placeholder="再输入一次新密码" required />
+          <button type="submit" class="btn" :disabled="pwBusy || !pw.current || !pw.next || !pw.again">修改密码</button>
+        </form>
+        <p v-if="pwMsg" :class="pwMsg.ok ? 'ok' : 'err'">{{ pwMsg.text }}</p>
+        <p class="muted hint">修改后，除了这台设备，其他设备上的登录都会失效。</p>
+      </section>
+
+      <section class="card block danger-zone">
+        <h2>注销账号</h2>
+        <p class="muted hint">
+          会永久删除这个账号，以及它的收藏夹、B50 存档（分享链接随之失效）、分享给好友的成绩、好友关系和谱面标签投票。无法恢复。
+        </p>
+        <form class="form" @submit.prevent="deleteAccount">
+          <input v-model="delPassword" class="field" type="password" autocomplete="current-password" placeholder="当前密码" required />
+          <input v-model="delConfirm" class="field" autocomplete="off" :placeholder="`输入用户名「${auth.user.username}」确认`" required />
+          <button type="submit" class="btn danger" :disabled="!delPassword || delConfirm !== auth.user.username">永久注销</button>
+        </form>
+        <p v-if="delError" class="err">{{ delError }}</p>
+      </section>
     </template>
   </main>
 </template>
@@ -135,6 +203,12 @@ onMounted(() => {
   margin-bottom: 12px;
 }
 
+.head-links {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
 .head h1 {
   margin: 0;
   font-size: 20px;
@@ -142,6 +216,43 @@ onMounted(() => {
 
 .block {
   padding: 14px;
+  margin-bottom: 12px;
+}
+
+.form {
+  display: grid;
+  gap: 8px;
+  max-width: 360px;
+  margin: 8px 0;
+}
+
+.btn {
+  justify-self: start;
+  padding: 6px 16px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  cursor: pointer;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.btn.danger {
+  background: var(--warn);
+  border-color: var(--warn);
+}
+
+.danger-zone {
+  border-color: color-mix(in srgb, var(--warn) 50%, var(--border));
+}
+
+.ok {
+  color: var(--accent);
+  font-size: 13px;
 }
 
 .block h2 {

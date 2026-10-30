@@ -27,7 +27,9 @@
     // local development sets the Vite origin in .dev.vars (see .dev.vars.example).
     "ALLOWED_ORIGINS": "",
     // "1": anyone can register. Anything else: sign-up needs an invite code (pnpm invite).
-    "OPEN_REGISTRATION": "1"
+    "OPEN_REGISTRATION": "1",
+    // Comma-separated site usernames that can post announcements and read/reply to feedback.
+    "ADMIN_USERNAMES": ""
   },
   "observability": { "enabled": true }
 }

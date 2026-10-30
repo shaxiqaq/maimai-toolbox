@@ -1,11 +1,20 @@
-import { recordKey, type TagCounts, type TagId } from "@mt/shared";
+import { autoTags, recordKey, tagLookup, type AutoTagId, type TagCounts, type TagId } from "@mt/shared";
 import { defineStore } from "pinia";
-import { ref, shallowRef } from "vue";
+import { computed, ref, shallowRef } from "vue";
 import { api } from "@/api";
+import { useCatalogStore } from "./catalog";
 
-/** Community tag totals (public) and the signed-in user's own votes, updated optimistically. */
+/**
+ * Community tag totals (public), tags computed from chart data, and the signed-in user's own votes
+ * (updated optimistically).
+ */
 export const useTagsStore = defineStore("tags", () => {
+  const catalog = useCatalogStore();
   const counts = shallowRef<TagCounts>({});
+  const auto = computed(() => (catalog.catalog ? autoTags(catalog.catalog) : {}));
+  /** Votes or chart data: what filters and the radar use. */
+  const lookup = computed(() => tagLookup(counts.value, auto.value));
+  const autoFor = (songId: number, difficulty: number): AutoTagId[] => auto.value[recordKey(songId, difficulty)] ?? [];
   const loaded = ref(false);
   const error = ref<string | null>(null);
   /** My votes per song: { songId: { difficulty: tags } }. */
@@ -54,5 +63,5 @@ export const useTagsStore = defineStore("tags", () => {
     }
   }
 
-  return { counts, loaded, error, mine, load, loadMine, toggle };
+  return { counts, auto, lookup, autoFor, loaded, error, mine, load, loadMine, toggle };
 });

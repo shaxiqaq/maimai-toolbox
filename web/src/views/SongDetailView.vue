@@ -86,6 +86,12 @@ const editing = ref<number | null>(null);
 const tagError = ref<string | null>(null);
 const TAGS_BY_GROUP = TAG_GROUPS.map((g) => ({ group: g, tags: CHART_TAGS.filter((t) => t.group === g) }));
 const myTags = (difficulty: number) => tags.mine[Number(props.id)]?.[difficulty] ?? [];
+/** Computed tags nobody has voted for yet (voted ones already show with their count). */
+function autoOnly(difficulty: number) {
+  const id = Number(props.id);
+  const voted = new Set(chartTags(tags.counts, id, difficulty).map((v) => v.tag));
+  return tags.autoFor(id, difficulty).filter((t) => !voted.has(t));
+}
 
 watch(
   () => [props.id, auth.user?.id] as const,
@@ -194,11 +200,19 @@ function fmt(n: number, digits: number): string {
               <span v-for="t in chartTags(tags.counts, song.id, c.difficulty)" :key="t.tag" class="tag" :class="{ mine: myTags(c.difficulty).includes(t.tag) }">
                 {{ TAG_LABELS[t.tag] }} <b>{{ t.votes }}</b>
               </span>
+              <span
+                v-for="t in autoOnly(c.difficulty)"
+                :key="`auto-${t}`"
+                class="tag auto"
+                title="按谱面数据自动判断（诈称：拟合定数明显高于定数；高物量：同等级物量前 10%；触摸 / 绝赞段：占比明显偏高）"
+              >
+                {{ TAG_LABELS[t] }} <b>自动</b>
+              </span>
               <button v-if="auth.user" type="button" class="tag-edit" @click="editing = editing === c.difficulty ? null : c.difficulty">
                 {{ editing === c.difficulty ? "完成" : "＋ 标签" }}
               </button>
               <RouterLink
-                v-else-if="auth.ready && !chartTags(tags.counts, song.id, c.difficulty).length"
+                v-else-if="auth.ready && !chartTags(tags.counts, song.id, c.difficulty).length && !tags.autoFor(song.id, c.difficulty).length"
                 :to="{ path: '/login', query: { next: `/songs/${song.id}` } }"
                 class="tag-edit muted"
               >
@@ -412,6 +426,11 @@ dd {
 .tag b {
   font-weight: 600;
   color: var(--text-muted);
+}
+
+.tag.auto {
+  background: none;
+  border: 1px dashed var(--border);
 }
 
 .tag.mine {

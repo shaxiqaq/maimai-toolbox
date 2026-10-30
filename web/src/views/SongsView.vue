@@ -4,7 +4,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router";
 import LevelPill from "@/components/LevelPill.vue";
 import SongJacket from "@/components/SongJacket.vue";
-import { CHART_TAGS, EMPTY_FILTER, hasTag, isTagId, searchSongs, songPlayCount, type SongFilter } from "@mt/shared";
+import { CHART_TAGS, EMPTY_FILTER, isTagId, searchSongs, songPlayCount, type SongFilter } from "@mt/shared";
 import { useCatalogStore } from "@/stores/catalog";
 import { useTagsStore } from "@/stores/tags";
 
@@ -49,7 +49,7 @@ const results = computed(() => {
   if (!store.catalog) return [];
   const t = tag.value;
   const found = searchSongs(store.catalog.songs, filter).filter(
-    (s) => !isTagId(t) || s.charts.some((c) => (!filter.level || c.level === filter.level) && hasTag(tags.counts, s.id, c.difficulty, t)),
+    (s) => !isTagId(t) || s.charts.some((c) => (!filter.level || c.level === filter.level) && tags.lookup(s.id, c.difficulty, t)),
   );
   if (sort.value !== "hot") return found;
   const plays = new Map(found.map((s) => [s.id, songPlayCount(s)]));

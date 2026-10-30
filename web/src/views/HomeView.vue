@@ -1,4 +1,43 @@
 <script setup lang="ts">
+import { computed, onMounted, ref } from "vue";
+import { api } from "@/api";
+
+interface Announcement {
+  id: number;
+  title: string;
+  body: string;
+  createdAt: number;
+}
+
+const SEEN_KEY = "seenAnnouncement";
+const announcements = ref<Announcement[]>([]);
+const seen = ref(readSeen());
+const showHistory = ref(false);
+const latest = computed(() => announcements.value[0] ?? null);
+const unread = computed(() => !!latest.value && latest.value.id > seen.value);
+
+function readSeen(): number {
+  try {
+    return Number(localStorage.getItem(SEEN_KEY)) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+function dismiss() {
+  if (!latest.value) return;
+  seen.value = latest.value.id;
+  try {
+    localStorage.setItem(SEEN_KEY, String(latest.value.id));
+  } catch {
+    // Shown again next visit.
+  }
+}
+
+onMounted(async () => {
+  announcements.value = await api<Announcement[]>("GET", "/announcements").catch(() => []);
+});
+
 interface Feature {
   title: string;
   desc: string;
@@ -23,6 +62,7 @@ const features: Feature[] = [
   { title: "机厅", desc: "附近 / 按地区查找舞萌机厅", to: "/arcades" },
   { title: "Bingo 海报", desc: "自定义 Bingo 表，可用成绩自动生成", to: "/bingo" },
   { title: "头像制作", desc: "照片加外圈、名字与 Rating 徽章", to: "/avatar" },
+  { title: "意见反馈", desc: "报告问题或提建议", to: "/feedback" },
 ];
 </script>
 
@@ -31,6 +71,15 @@ const features: Feature[] = [
     <section class="hero">
       <h1>纱汐查分器</h1>
       <p class="muted">好友间自用的舞萌 DX 查分与工具站。数据来自水鱼查分器与落雪查分器。</p>
+    </section>
+
+    <section v-if="unread && latest" class="card notice">
+      <div class="notice-head">
+        <strong>📢 {{ latest.title }}</strong>
+        <span class="muted small">{{ new Date(latest.createdAt).toLocaleDateString("zh-CN") }}</span>
+      </div>
+      <p>{{ latest.body }}</p>
+      <button type="button" class="link" @click="dismiss">知道了</button>
     </section>
 
     <section class="grid">
@@ -48,6 +97,19 @@ const features: Feature[] = [
         </div>
         <p class="muted">{{ f.desc }}</p>
       </component>
+    </section>
+
+    <section v-if="announcements.length" class="history">
+      <button type="button" class="link muted" @click="showHistory = !showHistory">
+        {{ showHistory ? "收起公告" : `历史公告（${announcements.length}）` }}
+      </button>
+      <ul v-if="showHistory">
+        <li v-for="a in announcements" :key="a.id">
+          <strong>{{ a.title }}</strong>
+          <span class="muted small"> · {{ new Date(a.createdAt).toLocaleDateString("zh-CN") }}</span>
+          <p>{{ a.body }}</p>
+        </li>
+      </ul>
     </section>
   </main>
 </template>
@@ -80,6 +142,54 @@ const features: Feature[] = [
 
 .tile.disabled {
   opacity: 0.55;
+}
+
+.notice {
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  border-color: var(--accent);
+}
+
+.notice-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.notice p,
+.history p {
+  margin: 6px 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+}
+
+.small {
+  font-size: 12px;
+}
+
+.link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.history {
+  margin-top: 18px;
+}
+
+.history ul {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.history li {
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
 }
 
 .tile-head {

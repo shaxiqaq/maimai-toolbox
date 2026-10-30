@@ -13,12 +13,15 @@ export const useAuthStore = defineStore("auth", () => {
   const ready = ref(false);
   /** Whether sign-up needs an invite code (the server decides; reported by /auth/me). */
   const inviteRequired = ref(false);
+  /** Can post announcements and handle feedback (decided by the server). */
+  const isAdmin = ref(false);
 
   async function refresh(): Promise<void> {
     try {
-      const me = await api<{ user: User | null; inviteRequired?: boolean }>("GET", "/auth/me");
+      const me = await api<{ user: User | null; inviteRequired?: boolean; isAdmin?: boolean }>("GET", "/auth/me");
       user.value = me.user;
       inviteRequired.value = me.inviteRequired ?? true;
+      isAdmin.value = me.isAdmin ?? false;
     } catch {
       user.value = null;
     } finally {
@@ -28,16 +31,29 @@ export const useAuthStore = defineStore("auth", () => {
 
   async function login(username: string, password: string): Promise<void> {
     user.value = (await api<{ user: User }>("POST", "/auth/login", { username, password })).user;
+    await refresh();
   }
 
   async function register(username: string, password: string, invite: string): Promise<void> {
     user.value = (await api<{ user: User }>("POST", "/auth/register", { username, password, invite })).user;
+    await refresh();
+  }
+
+  async function changePassword(current: string, next: string): Promise<void> {
+    await api("POST", "/auth/password", { current, next });
+  }
+
+  async function deleteAccount(password: string): Promise<void> {
+    await api("POST", "/auth/delete", { password });
+    user.value = null;
+    isAdmin.value = false;
   }
 
   async function logout(): Promise<void> {
     await api("POST", "/auth/logout").catch(() => undefined);
     user.value = null;
+    isAdmin.value = false;
   }
 
-  return { user, ready, inviteRequired, refresh, login, register, logout };
+  return { user, ready, inviteRequired, isAdmin, refresh, login, register, changePassword, deleteAccount, logout };
 });

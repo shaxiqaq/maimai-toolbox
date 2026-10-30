@@ -46,6 +46,7 @@ pnpm deploy                                 # 构建前端并发布 Worker
 | `COOKIE_SECURE` | `1` | 会话 Cookie 带 `Secure`（线上是 HTTPS，保持 `1`） |
 | `ALLOWED_ORIGINS` | 空 | 允许发起写操作的额外来源；本地开发在 `worker/.dev.vars` 里设为 `http://localhost:5173` |
 | `OPEN_REGISTRATION` | `1` | `1` 表示任何人都能注册；改成其他值则注册需要邀请码 |
+| `ADMIN_USERNAMES` | 空 | 管理员的站内用户名（逗号分隔）；管理员可以在 `/admin` 发布公告、查看和回复反馈 |
 
 ## 注册与邀请码
 
@@ -57,7 +58,8 @@ pnpm deploy                                 # 构建前端并发布 Worker
 
 - `GET /api/health`
 - `GET /api/shared/{shareId}` — 公开的 B50 分享（只读）
-- 账号：`GET /api/auth/me`、`POST /api/auth/register`（用户名、密码，需要时加邀请码）、`POST /api/auth/login`、`POST /api/auth/logout`
+- 账号：`GET /api/auth/me`、`POST /api/auth/register`（用户名、密码，需要时加邀请码）、`POST /api/auth/login`、`POST /api/auth/logout`、`POST /api/auth/password`（改密码，其他设备下线）、`POST /api/auth/delete`（注销并删除全部数据）
+- 公告与反馈：`GET /api/announcements`、`POST /api/feedback`、`GET /api/feedback/mine`；管理员：`POST|DELETE /api/admin/announcements`、`GET /api/admin/feedback`、`PATCH /api/admin/feedback/{id}`
 - 收藏夹（需登录）：`GET|POST /api/favorites`、`PATCH|DELETE /api/favorites/{id}`、`PUT|DELETE /api/favorites/{id}/songs/{songId}`
 - B50 存档（需登录）：`GET|POST /api/archives`、`GET|PATCH|DELETE /api/archives/{id}`、`POST|DELETE /api/archives/{id}/share`
 

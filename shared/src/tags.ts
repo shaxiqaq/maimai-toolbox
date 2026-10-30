@@ -1,4 +1,5 @@
-/** Community chart tags (voted by signed-in users) and the skill radar built on top of them. */
+/** Chart tags (community votes plus a few computed from chart data) and the skill radar built on top of them. */
+import type { Catalog } from "./catalog";
 import type { PlayRecord } from "./player";
 import { recordKey } from "./scores";
 
@@ -46,6 +47,71 @@ export function hasTag(counts: TagCounts, songId: number, difficulty: number, ta
   return (counts[recordKey(songId, difficulty)]?.[tag] ?? 0) > 0;
 }
 
+// ---- Automatic tags ----
+
+/** Tags that chart data can decide on its own; everything else needs votes. */
+export type AutoTagId = Extract<TagId, "underrated" | "density" | "touch" | "break">;
+/** Computed tags per chart, keyed by recordKey(songId, difficulty). */
+export type AutoTags = Record<string, AutoTagId[]>;
+
+/** Thresholds, chosen so each tag lands on roughly the top 5–10% of charts. */
+export const AUTO_TAG_RULES = {
+  /** Diving-Fish fitted constant at least this far above the official one. */
+  underratedGap: 0.4,
+  underratedMinDs: 10,
+  underratedMinSamples: 100,
+  /** Note count above this percentile among charts of the same level. */
+  densityPercentile: 0.9,
+  densityMinCharts: 20,
+  /** Share of all notes. */
+  touchShare: 0.15,
+  breakShare: 0.09,
+} as const;
+
+export function autoTags(catalog: Pick<Catalog, "songs">): AutoTags {
+  const R = AUTO_TAG_RULES;
+  const charts = catalog.songs.filter((s) => s.type !== "UTAGE").flatMap((song) => song.charts.map((chart) => ({ song, chart })));
+
+  const byLevel = new Map<string, number[]>();
+  for (const { chart } of charts) {
+    if (!chart.notes.total) continue;
+    const totals = byLevel.get(chart.level) ?? [];
+    totals.push(chart.notes.total);
+    byLevel.set(chart.level, totals);
+  }
+  const densityCut = new Map<string, number>();
+  for (const [level, totals] of byLevel) {
+    if (totals.length < R.densityMinCharts) continue;
+    const sorted = totals.sort((a, b) => a - b);
+    densityCut.set(level, sorted[Math.floor(R.densityPercentile * (sorted.length - 1))]!);
+  }
+
+  const out: AutoTags = {};
+  for (const { song, chart } of charts) {
+    const tags: AutoTagId[] = [];
+    const { stats, notes } = chart;
+    if (stats && chart.ds >= R.underratedMinDs && stats.count >= R.underratedMinSamples && stats.fitDiff - chart.ds >= R.underratedGap) {
+      tags.push("underrated");
+    }
+    if (notes.total) {
+      const cut = densityCut.get(chart.level);
+      if (cut !== undefined && notes.total > cut) tags.push("density"); // strict, so ties at the cut-off do not flood the tag
+      if (song.type === "DX" && notes.touch / notes.total >= R.touchShare) tags.push("touch");
+      if (notes.break / notes.total >= R.breakShare) tags.push("break");
+    }
+    if (tags.length) out[recordKey(song.id, chart.difficulty)] = tags;
+  }
+  return out;
+}
+
+/** Whether a chart carries a tag, from votes or from chart data. */
+export type TagLookup = (songId: number, difficulty: number, tag: TagId) => boolean;
+
+export function tagLookup(counts: TagCounts, auto: AutoTags): TagLookup {
+  return (songId, difficulty, tag) =>
+    hasTag(counts, songId, difficulty, tag) || (auto[recordKey(songId, difficulty)] ?? []).includes(tag as AutoTagId);
+}
+
 export interface SkillAxis {
   tag: TagId;
   /** Tagged charts the player has played (with community stats to compare against). */
@@ -78,7 +144,7 @@ const SCORE_PER_POINT = 15;
  */
 export function skillRadar(
   records: PlayRecord[],
-  counts: TagCounts,
+  tagged: TagLookup,
   communityAvg: (songId: number, difficulty: number) => number | null,
 ): SkillRadar {
   const rows = records.flatMap((r) => {
@@ -90,14 +156,14 @@ export function skillRadar(
   const overallDelta = mean(rows.map((x) => x.delta));
 
   const axes = CHART_TAGS.flatMap(({ id }) => {
-    const tagged = rows.filter((x) => hasTag(counts, x.r.songId, x.r.difficulty, id));
-    if (tagged.length < MIN_PLAYS_PER_AXIS) return [];
-    const delta = mean(tagged.map((x) => x.delta));
+    const hits = rows.filter((x) => tagged(x.r.songId, x.r.difficulty, id));
+    if (hits.length < MIN_PLAYS_PER_AXIS) return [];
+    const delta = mean(hits.map((x) => x.delta));
     return [
       {
         tag: id,
-        played: tagged.length,
-        avgAchievement: mean(tagged.map((x) => x.r.achievement)),
+        played: hits.length,
+        avgAchievement: mean(hits.map((x) => x.r.achievement)),
         delta,
         score: Math.max(0, Math.min(100, 50 + (delta - overallDelta) * SCORE_PER_POINT)),
       },

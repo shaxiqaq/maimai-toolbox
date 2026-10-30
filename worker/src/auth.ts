@@ -81,10 +81,14 @@ export function validateCredentials(username: unknown, password: unknown): { use
   if (typeof username !== "string" || !USERNAME.test(username.trim())) {
     throw new AuthError(400, "用户名需为 2–20 位的文字、数字、下划线或连字符");
   }
+  return { username: username.trim(), password: validatePassword(password) };
+}
+
+function validatePassword(password: unknown): string {
   if (typeof password !== "string" || password.length < 8 || password.length > 128) {
     throw new AuthError(400, "密码长度需为 8–128 位");
   }
-  return { username: username.trim(), password };
+  return password;
 }
 
 // ---- Invites ----
@@ -159,6 +163,44 @@ export async function login(db: Db, usernameRaw: unknown, passwordRaw: unknown):
   const ok = await verifyPassword(password, row?.password_hash ?? (await dummyHash));
   if (!row || !ok) throw new AuthError(401, "用户名或密码错误");
   return { id: row.id, username: row.username };
+}
+
+async function checkCurrentPassword(db: Db, userId: number, password: unknown): Promise<void> {
+  const row = await db.first<{ password_hash: string }>("SELECT password_hash FROM users WHERE id = ?", userId);
+  if (!row || typeof password !== "string" || !(await verifyPassword(password, row.password_hash))) {
+    throw new AuthError(401, "当前密码不正确");
+  }
+}
+
+/** Change the password and sign out every other device; the session in `keepToken` stays valid. */
+export async function changePassword(db: Db, userId: number, current: unknown, next: unknown, keepToken: string | undefined): Promise<void> {
+  const password = validatePassword(next);
+  await checkCurrentPassword(db, userId, current);
+  await db.run("UPDATE users SET password_hash = ? WHERE id = ?", await hashPassword(password), userId);
+  await db.run("DELETE FROM sessions WHERE user_id = ? AND token_hash != ?", userId, keepToken ? await sha256Hex(keepToken) : "");
+}
+
+/**
+ * Delete the account and everything tied to it. Child rows are removed explicitly as well as through
+ * ON DELETE CASCADE, so nothing is left behind even if foreign-key enforcement is off.
+ */
+export async function deleteAccount(db: Db, userId: number, password: unknown): Promise<void> {
+  await checkCurrentPassword(db, userId, password);
+  await db.run("DELETE FROM fav_songs WHERE folder_id IN (SELECT id FROM fav_folders WHERE user_id = ?)", userId);
+  for (const sql of [
+    "DELETE FROM fav_folders WHERE user_id = ?",
+    "DELETE FROM b50_archives WHERE user_id = ?",
+    "DELETE FROM score_snapshots WHERE user_id = ?",
+    "DELETE FROM chart_tag_votes WHERE user_id = ?",
+    "DELETE FROM feedback WHERE user_id = ?",
+    "DELETE FROM friendships WHERE user_id = ?1 OR friend_id = ?1",
+    "DELETE FROM friend_requests WHERE from_id = ?1 OR to_id = ?1",
+    "UPDATE invites SET used_by = NULL WHERE used_by = ?",
+    "DELETE FROM sessions WHERE user_id = ?",
+    "DELETE FROM users WHERE id = ?",
+  ]) {
+    await db.run(sql, userId);
+  }
 }
 
 // ---- Sessions ----

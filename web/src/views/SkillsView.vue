@@ -26,7 +26,7 @@ const communityAvg = computed(() => {
   return (songId: number, difficulty: number) => map.get(recordKey(songId, difficulty)) ?? null;
 });
 
-const mine = computed(() => skillRadar(myRecords.value, tags.counts, communityAvg.value));
+const mine = computed(() => skillRadar(myRecords.value, tags.lookup, communityAvg.value));
 const friendsWithScores = computed(() => (friends.overview?.friends ?? []).filter((f) => f.snapshot));
 const friendName = computed(() => friendsWithScores.value.find((f) => String(f.id) === friendId.value)?.username ?? "");
 
@@ -36,7 +36,7 @@ watch(friendId, async (id) => {
   if (!id || !catalog.catalog) return;
   try {
     const { snapshot } = await friends.fetchSnapshot(Number(id));
-    if (friendId.value === id) friendRadar.value = skillRadar(snapshotRecords(snapshot, catalog.catalog), tags.counts, communityAvg.value);
+    if (friendId.value === id) friendRadar.value = skillRadar(snapshotRecords(snapshot, catalog.catalog), tags.lookup, communityAvg.value);
   } catch (err) {
     friendError.value = (err as Error).message;
   }
@@ -86,7 +86,7 @@ watch(
     <section class="card intro">
       <h1>能力雷达</h1>
       <p class="muted small">
-        按社区投票的谱面标签，把你在每类谱面上的达成率和水鱼玩家平均水平比较。每个方向都相对于你自己的整体水平：
+        按谱面标签（社区投票，加上诈称、高物量、触摸、绝赞段这几个按谱面数据自动判断的标签），把你在每类谱面上的达成率和水鱼玩家平均水平比较。每个方向都相对于你自己的整体水平：
         外凸是你相对擅长的类型，内凹是相对薄弱的类型。每个标签至少要有 3 张你玩过的谱面才会画出来。
       </p>
     </section>
