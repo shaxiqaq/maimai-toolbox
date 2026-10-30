@@ -17,6 +17,7 @@ const links = [
   { to: "/calculator", label: "计算器" },
   { to: "/lottery", label: "抽歌" },
   { to: "/favorites", label: "收藏" },
+  { to: "/arcades", label: "机厅" },
   { to: "/songs", label: "曲库" },
 ];
 </script>

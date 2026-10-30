@@ -1,5 +1,7 @@
+export * from "./arcade";
 export * from "./calculator";
 export * from "./catalog";
+export * from "./highlights";
 export * from "./player";
 export * from "./progress";
 export * from "./rating";

@@ -54,6 +54,7 @@ pnpm invite 3    # 生成 3 个一次性邀请码
 - `POST /api/lxns/scores`（请求头 `X-User-Token`）— 落雪个人密钥获取全部成绩；密钥只转发、不记录
 - `GET /api/jacket/{id}.png` — 曲绘，首次从落雪获取后缓存在 `DATA_DIR/jackets/`
 - `GET /api/shared/{shareId}` — 公开的 B50 分享（只读）
+- 机厅（数据来自 [nearcade](https://nearcade.cn)，只返回有舞萌 DX 的店）：`GET /api/arcades/nearby?lat=&lng=&radius=`（坐标先精确到约 100 米再转发，不记录）、`GET /api/arcades/regions?parent=CN`、`GET /api/arcades?region=&q=&page=`、`GET /api/arcades/{id}`
 - 账号：`GET /api/auth/me`、`POST /api/auth/register`（用户名、密码、邀请码）、`POST /api/auth/login`、`POST /api/auth/logout`
 - 收藏夹（需登录）：`GET|POST /api/favorites`、`PATCH|DELETE /api/favorites/{id}`、`PUT|DELETE /api/favorites/{id}/songs/{songId}`
 - B50 存档（需登录）：`GET|POST /api/archives`、`GET|PATCH|DELETE /api/archives/{id}`、`POST|DELETE /api/archives/{id}/share`

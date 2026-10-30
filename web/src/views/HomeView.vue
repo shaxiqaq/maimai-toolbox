@@ -17,7 +17,9 @@ const features: Feature[] = [
   { title: "随机抽歌", desc: "按条件随机选曲", to: "/lottery" },
   { title: "收藏夹", desc: "云同步的歌单（需登录）", to: "/favorites" },
   { title: "谱面确认", desc: "曲目详情页跳转 DXRating 看谱面视频", to: "/songs" },
-  { title: "机厅", desc: "附近机厅查询", plannedFor: "M5" },
+  { title: "机厅", desc: "附近 / 按地区查找舞萌机厅", to: "/arcades" },
+  { title: "Bingo 海报", desc: "自定义 Bingo 表，可用成绩自动生成", to: "/bingo" },
+  { title: "头像制作", desc: "照片加外圈、名字与 Rating 徽章", to: "/avatar" },
 ];
 </script>
 

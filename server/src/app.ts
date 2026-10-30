@@ -27,6 +27,7 @@ import {
   userForSession,
   type User,
 } from "./auth";
+import { ArcadeError, detail as arcadeDetail, nearby, parseCoords, regions, search as searchArcades } from "./arcades";
 import { getCatalog, rebuildCatalog } from "./catalog";
 import { config } from "./config";
 import { addSong, createFolder, deleteFolder, FavoritesError, listFolders, removeSong, renameFolder } from "./favorites";
@@ -59,7 +60,8 @@ app.onError((err, c) => {
     err instanceof AuthError ||
     err instanceof FavoritesError ||
     err instanceof ArchiveError ||
-    err instanceof PlayerLookupError
+    err instanceof PlayerLookupError ||
+    err instanceof ArcadeError
   ) {
     return c.json({ error: err.message }, err.status);
   }
@@ -133,6 +135,22 @@ app.post("/lxns/scores", async (c) => {
   if (!cached) return c.json({ error: "曲库正在同步，请稍后再试" }, 503);
   return c.json(await fetchLxnsScores(token, cached.catalog));
 });
+
+// ---- Arcades (nearcade) ----
+
+app.get("/arcades/nearby", async (c) => {
+  const at = parseCoords(c.req.query("lat"), c.req.query("lng"));
+  if (!at) return c.json({ error: "缺少有效的经纬度" }, 400);
+  return c.json(await nearby(at.lat, at.lng, Number(c.req.query("radius")) || 10));
+});
+
+app.get("/arcades/regions", async (c) => c.json(await regions(c.req.query("parent") || "CN")));
+
+app.get("/arcades", async (c) =>
+  c.json(await searchArcades({ regionId: c.req.query("region"), q: c.req.query("q"), page: Number(c.req.query("page")) || 1 })),
+);
+
+app.get("/arcades/:id", async (c) => c.json(await arcadeDetail(Number(c.req.param("id")))));
 
 app.get("/shared/:shareId", (c) => {
   const shared = getShared(c.req.param("shareId"));
