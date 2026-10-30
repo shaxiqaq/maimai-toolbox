@@ -1,4 +1,4 @@
-/** Invite-only accounts with PBKDF2 password hashes and opaque, server-side sessions (Web Crypto only). */
+/** Accounts (open or invite-only sign-up) with PBKDF2 password hashes and opaque, server-side sessions (Web Crypto only). */
 import type { Db } from "./db";
 
 /**
@@ -109,30 +109,39 @@ export async function checkRateLimit(db: Db, key: string): Promise<void> {
   if ((row?.n ?? 0) >= MAX_ATTEMPTS) throw new AuthError(429, "尝试次数过多，请 15 分钟后再试");
 }
 
-export async function recordFailure(db: Db, key: string): Promise<void> {
+export async function recordAttempt(db: Db, key: string): Promise<void> {
   await db.run("INSERT INTO attempts (key, at) VALUES (?, ?)", key, Date.now());
 }
 
 // ---- Accounts ----
 
-export async function register(db: Db, usernameRaw: unknown, passwordRaw: unknown, inviteRaw: unknown): Promise<User> {
+/** Create an account. With `inviteRequired`, a one-time invite code is claimed; otherwise sign-up is open. */
+export async function register(
+  db: Db,
+  usernameRaw: unknown,
+  passwordRaw: unknown,
+  inviteRaw: unknown,
+  { inviteRequired }: { inviteRequired: boolean },
+): Promise<User> {
   const { username, password } = validateCredentials(usernameRaw, passwordRaw);
-  const code = normalizeInvite(inviteRaw);
+  const code = inviteRequired ? normalizeInvite(inviteRaw) : null;
   if (await db.first("SELECT 1 AS x FROM users WHERE username = ?", username)) throw new AuthError(409, "这个用户名已被注册");
 
   const hash = await hashPassword(password);
-  // Claiming is a single conditional UPDATE, so two simultaneous sign-ups cannot share one code.
-  const claimed = await db.run("UPDATE invites SET used_at = ? WHERE code = ? AND used_at IS NULL", Date.now(), code);
-  if (claimed.changes !== 1) throw new AuthError(400, "邀请码无效或已被使用");
+  if (code !== null) {
+    // Claiming is a single conditional UPDATE, so two simultaneous sign-ups cannot share one code.
+    const claimed = await db.run("UPDATE invites SET used_at = ? WHERE code = ? AND used_at IS NULL", Date.now(), code);
+    if (claimed.changes !== 1) throw new AuthError(400, "邀请码无效或已被使用");
+  }
   try {
     await db.run("INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)", username, hash, Date.now());
   } catch (err) {
-    await db.run("UPDATE invites SET used_at = NULL WHERE code = ?", code); // give the code back
+    if (code !== null) await db.run("UPDATE invites SET used_at = NULL WHERE code = ?", code); // give the code back
     if (err instanceof Error && /UNIQUE/i.test(err.message)) throw new AuthError(409, "这个用户名已被注册");
     throw err;
   }
   const user = (await db.first<User>("SELECT id, username FROM users WHERE username = ?", username))!;
-  await db.run("UPDATE invites SET used_by = ? WHERE code = ?", user.id, code);
+  if (code !== null) await db.run("UPDATE invites SET used_by = ? WHERE code = ?", user.id, code);
   return user;
 }
 

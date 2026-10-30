@@ -25,7 +25,9 @@
     "COOKIE_SECURE": "1",
     // Extra origins allowed to make state-changing requests (comma-separated). Production needs none;
     // local development sets the Vite origin in .dev.vars (see .dev.vars.example).
-    "ALLOWED_ORIGINS": ""
+    "ALLOWED_ORIGINS": "",
+    // "1": anyone can register. Anything else: sign-up needs an invite code (pnpm invite).
+    "OPEN_REGISTRATION": "1"
   },
   "observability": { "enabled": true }
 }

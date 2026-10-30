@@ -8,6 +8,7 @@ import { memoryDb } from "./testing";
 const testDb = memoryDb();
 const app = createApp(() => testDb);
 const ENV = { COOKIE_SECURE: "1", ALLOWED_ORIGINS: "" };
+const OPEN_ENV = { ...ENV, OPEN_REGISTRATION: "1" };
 
 async function createInvites(n: number): Promise<string[]> {
   const codes = Array.from({ length: n }, generateInviteCode);
@@ -17,20 +18,24 @@ async function createInvites(n: number): Promise<string[]> {
 
 const ORIGIN = "http://localhost";
 
-/** Minimal cookie-carrying client. */
-function client() {
+let nextIp = 0;
+
+/** Minimal cookie-carrying client, each with its own client IP so rate limits do not leak between tests. */
+function client(env: Record<string, string> = ENV) {
   let cookie = "";
+  const ip = `10.0.0.${++nextIp}`;
   return async (method: string, path: string, body?: unknown, headers: Record<string, string> = {}) => {
     const res = await app.request(`${ORIGIN}/api${path}`, {
       method,
       headers: {
         Origin: ORIGIN,
+        "CF-Connecting-IP": ip,
         ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
         ...(cookie ? { Cookie: cookie } : {}),
         ...headers,
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
-    }, ENV);
+    }, env);
     const set = res.headers.get("set-cookie");
     if (set) cookie = set.split(";")[0]!.includes("=;") || /Max-Age=0/i.test(set) ? "" : set.split(";")[0]!;
     const text = await res.text();
@@ -87,6 +92,24 @@ describe("auth", () => {
     assert.equal((await api("POST", "/auth/login", { username: "ALICE", password: "nope-nope" })).status, 401);
     assert.equal((await api("POST", "/auth/login", { username: "ALICE", password: "password123" })).status, 200);
     assert.equal((await api("GET", "/auth/me")).body.user.username, "alice");
+  });
+
+  it("registers without an invite when registration is open, and reports it", async () => {
+    const api = client(OPEN_ENV);
+    assert.equal((await api("GET", "/auth/me")).body.inviteRequired, false);
+    assert.equal((await client()("GET", "/auth/me")).body.inviteRequired, true);
+    const reg = await api("POST", "/auth/register", { username: "carol", password: "password123" });
+    assert.equal(reg.status, 200);
+    assert.equal((await api("GET", "/auth/me")).body.user.username, "carol");
+    assert.equal((await client()("POST", "/auth/register", { username: "dave", password: "password123" })).status, 400);
+  });
+
+  it("limits sign-ups per client even when they succeed", async () => {
+    const api = client(OPEN_ENV);
+    const statuses = [];
+    for (let i = 0; i < 11; i++) statuses.push((await api("POST", "/auth/register", { username: `bulk${i}`, password: "password123" })).status);
+    assert.deepEqual(statuses.slice(0, 10), Array(10).fill(200));
+    assert.equal(statuses[10], 429);
   });
 
   it("rejects duplicate usernames case-insensitively", async () => {

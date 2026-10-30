@@ -11,10 +11,14 @@ export const useAuthStore = defineStore("auth", () => {
   const user = ref<User | null>(null);
   /** False until the first /auth/me answer, so pages can avoid flashing "please log in". */
   const ready = ref(false);
+  /** Whether sign-up needs an invite code (the server decides; reported by /auth/me). */
+  const inviteRequired = ref(false);
 
   async function refresh(): Promise<void> {
     try {
-      user.value = (await api<{ user: User | null }>("GET", "/auth/me")).user;
+      const me = await api<{ user: User | null; inviteRequired?: boolean }>("GET", "/auth/me");
+      user.value = me.user;
+      inviteRequired.value = me.inviteRequired ?? true;
     } catch {
       user.value = null;
     } finally {
@@ -35,5 +39,5 @@ export const useAuthStore = defineStore("auth", () => {
     user.value = null;
   }
 
-  return { user, ready, refresh, login, register, logout };
+  return { user, ready, inviteRequired, refresh, login, register, logout };
 });

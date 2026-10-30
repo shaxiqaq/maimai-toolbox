@@ -15,7 +15,11 @@ const busy = ref(false);
 const error = ref<string | null>(null);
 
 const canSubmit = computed(
-  () => username.value.trim() && password.value && (mode.value === "login" || invite.value.trim()) && !busy.value,
+  () =>
+    username.value.trim() &&
+    password.value &&
+    (mode.value === "login" || !auth.inviteRequired || invite.value.trim()) &&
+    !busy.value,
 );
 
 /** Only follow same-site relative redirects. */
@@ -45,7 +49,7 @@ async function submit() {
     <form class="card box" @submit.prevent="submit">
       <div class="modes">
         <button type="button" :class="{ on: mode === 'login' }" @click="mode = 'login'">登录</button>
-        <button type="button" :class="{ on: mode === 'register' }" @click="mode = 'register'">用邀请码注册</button>
+        <button type="button" :class="{ on: mode === 'register' }" @click="mode = 'register'">注册</button>
       </div>
 
       <label>
@@ -64,13 +68,14 @@ async function submit() {
           required
         />
       </label>
-      <label v-if="mode === 'register'">
+      <label v-if="mode === 'register' && auth.inviteRequired">
         邀请码
         <input v-model="invite" class="field" autocomplete="off" spellcheck="false" required />
       </label>
 
       <p v-if="mode === 'register'" class="muted hint">
-        本站只对好友开放，需要站长给的邀请码。用户名 2–20 位，密码至少 8 位。账号只用来同步收藏夹和保存 B50 存档；
+        <template v-if="auth.inviteRequired">本站只对好友开放，需要站长给的邀请码。</template>
+        用户名 2–20 位，密码至少 8 位。账号只用来同步收藏夹和保存 B50 存档；
         查分本身不需要登录。
       </p>
       <p v-if="error" class="error">{{ error }}</p>

@@ -20,7 +20,7 @@ import {
   createSession,
   deleteSession,
   login,
-  recordFailure,
+  recordAttempt,
   register,
   SESSION_TTL_MS,
   userForSession,
@@ -35,6 +35,8 @@ export interface Bindings {
   COOKIE_SECURE?: string;
   /** Extra origins allowed to make state-changing requests (comma-separated). */
   ALLOWED_ORIGINS?: string;
+  /** "1" lets anyone register; otherwise sign-up needs an invite code. */
+  OPEN_REGISTRATION?: string;
 }
 
 type Env = { Bindings: Bindings; Variables: { db: Db; user: User | null } };
@@ -117,18 +119,17 @@ export function createApp(dbFor: (env: Bindings) => Db) {
     return c.json({ user });
   }
 
-  app.get("/auth/me", (c) => c.json({ user: c.get("user") }));
+  const inviteRequired = (c: C) => c.env?.OPEN_REGISTRATION !== "1";
+
+  app.get("/auth/me", (c) => c.json({ user: c.get("user"), inviteRequired: inviteRequired(c) }));
 
   app.post("/auth/register", async (c) => {
     const body = await jsonBody(c);
     const key = `register:${clientKey(c)}`;
     await checkRateLimit(db(c), key);
-    try {
-      return await startSession(c, await register(db(c), body.username, body.password, body.invite));
-    } catch (err) {
-      await recordFailure(db(c), key);
-      throw err;
-    }
+    // Every attempt counts, successful ones too, so open sign-up cannot be used to mass-create accounts.
+    await recordAttempt(db(c), key);
+    return startSession(c, await register(db(c), body.username, body.password, body.invite, { inviteRequired: inviteRequired(c) }));
   });
 
   app.post("/auth/login", async (c) => {
@@ -138,7 +139,7 @@ export function createApp(dbFor: (env: Bindings) => Db) {
     try {
       return await startSession(c, await login(db(c), body.username, body.password));
     } catch (err) {
-      for (const k of keys) await recordFailure(db(c), k);
+      for (const k of keys) await recordAttempt(db(c), k);
       throw err;
     }
   });

@@ -24,7 +24,6 @@ pnpm install
 cp worker/.dev.vars.example worker/.dev.vars   # 本地允许 Vite 开发服务器发起写操作
 pnpm db:migrate:local      # 初始化本地 D1
 pnpm dev                   # worker(:8787) + web(:5173)，打开 http://localhost:5173
-pnpm invite 1 --local      # 生成本地邀请码
 ```
 
 也可以先 `pnpm build`，再单独 `pnpm dev:worker`，直接访问 http://localhost:8787 ，这和线上的形态一致。
@@ -36,7 +35,6 @@ pnpm cf:login                               # 登录 Cloudflare（授权页在 M
 npx wrangler d1 create maimai-toolbox       # 把输出的 database_id 填进 worker/wrangler.jsonc
 pnpm db:migrate:remote                      # 在线上 D1 建表
 pnpm deploy                                 # 构建前端并发布 Worker
-pnpm invite 3                               # 生成 3 个线上邀请码
 ```
 
 发布后的地址是 `https://maimai-toolbox.<你的子域>.workers.dev`；也可以在 Cloudflare 后台给 Worker 绑定自己的域名。
@@ -47,16 +45,19 @@ pnpm invite 3                               # 生成 3 个线上邀请码
 |---|---|---|
 | `COOKIE_SECURE` | `1` | 会话 Cookie 带 `Secure`（线上是 HTTPS，保持 `1`） |
 | `ALLOWED_ORIGINS` | 空 | 允许发起写操作的额外来源；本地开发在 `worker/.dev.vars` 里设为 `http://localhost:5173` |
+| `OPEN_REGISTRATION` | `1` | `1` 表示任何人都能注册；改成其他值则注册需要邀请码 |
 
-## 邀请好友
+## 注册与邀请码
 
-查分和工具不需要登录；收藏夹和 B50 云端存档需要账号，注册只能用邀请码。`pnpm invite 3` 生成一次性邀请码，或者直接发 `https://<你的地址>/login?invite=<邀请码>`（会自动填好）。
+查分和工具不需要登录；收藏夹和 B50 云端存档需要账号。目前注册是开放的，同一 IP 每 15 分钟最多注册 10 次。
+
+如果想改回只对好友开放，把 `OPEN_REGISTRATION` 改成 `0` 后重新 `pnpm deploy`，然后用 `pnpm invite 3`（本地加 `--local`）生成一次性邀请码，或者直接发 `https://<你的地址>/login?invite=<邀请码>`（会自动填好）。
 
 ## Worker API
 
 - `GET /api/health`
 - `GET /api/shared/{shareId}` — 公开的 B50 分享（只读）
-- 账号：`GET /api/auth/me`、`POST /api/auth/register`（用户名、密码、邀请码）、`POST /api/auth/login`、`POST /api/auth/logout`
+- 账号：`GET /api/auth/me`、`POST /api/auth/register`（用户名、密码，需要时加邀请码）、`POST /api/auth/login`、`POST /api/auth/logout`
 - 收藏夹（需登录）：`GET|POST /api/favorites`、`PATCH|DELETE /api/favorites/{id}`、`PUT|DELETE /api/favorites/{id}/songs/{songId}`
 - B50 存档（需登录）：`GET|POST /api/archives`、`GET|PATCH|DELETE /api/archives/{id}`、`POST|DELETE /api/archives/{id}/share`
 
