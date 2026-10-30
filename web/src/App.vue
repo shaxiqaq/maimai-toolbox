@@ -1,6 +1,10 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, onMounted } from "vue";
 import { useTheme } from "./composables/theme";
+import { useAuthStore } from "./stores/auth";
+
+const auth = useAuthStore();
+onMounted(() => void auth.refresh());
 
 const { choice, cycle } = useTheme();
 const themeLabel = computed(() => ({ system: "跟随系统", light: "浅色", dark: "深色" })[choice.value]);
@@ -12,6 +16,7 @@ const links = [
   { to: "/recommend", label: "推荐" },
   { to: "/calculator", label: "计算器" },
   { to: "/lottery", label: "抽歌" },
+  { to: "/favorites", label: "收藏" },
   { to: "/songs", label: "曲库" },
 ];
 </script>
@@ -23,7 +28,11 @@ const links = [
       <nav class="nav" aria-label="主导航">
         <RouterLink v-for="l in links" :key="l.to" :to="l.to">{{ l.label }}</RouterLink>
       </nav>
-      <button class="theme" type="button" :title="`主题：${themeLabel}`" @click="cycle">{{ themeLabel }}</button>
+      <div class="side">
+        <RouterLink v-if="auth.user" to="/account" class="pill" :title="auth.user.username">{{ auth.user.username }}</RouterLink>
+        <RouterLink v-else-if="auth.ready" :to="{ path: '/login', query: { next: $route.fullPath } }" class="pill">登录</RouterLink>
+        <button class="pill" type="button" :title="`主题：${themeLabel}`" @click="cycle">{{ themeLabel }}</button>
+      </div>
     </div>
   </header>
   <RouterView />
@@ -77,13 +86,23 @@ const links = [
   font-weight: 600;
 }
 
-.theme {
+.side {
   grid-area: theme;
+  display: flex;
+  gap: 6px;
+}
+
+.pill {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   border: 1px solid var(--border);
   background: var(--surface);
   border-radius: 999px;
   padding: 2px 10px;
   font-size: 12px;
+  line-height: 18px;
   cursor: pointer;
 }
 

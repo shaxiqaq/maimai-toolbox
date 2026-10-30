@@ -15,7 +15,7 @@ const features: Feature[] = [
   { title: "上分推荐", desc: "按 B50 底分推荐目标谱面", to: "/recommend" },
   { title: "计算器", desc: "达成率、容错与 Rating", to: "/calculator" },
   { title: "随机抽歌", desc: "按条件随机选曲", to: "/lottery" },
-  { title: "收藏夹", desc: "云同步的歌单", plannedFor: "M3" },
+  { title: "收藏夹", desc: "云同步的歌单（需登录）", to: "/favorites" },
   { title: "谱面播放", desc: "simai 谱面预览与播放", plannedFor: "M4" },
   { title: "机厅", desc: "附近机厅查询", plannedFor: "M5" },
 ];

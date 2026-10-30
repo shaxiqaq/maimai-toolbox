@@ -4,6 +4,8 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import RecordCard from "@/components/RecordCard.vue";
 import { useCatalogStore } from "@/stores/catalog";
 import { usePlayerStore, type LookupKind } from "@/stores/player";
+import { api } from "@/api";
+import { useAuthStore } from "@/stores/auth";
 
 const player = usePlayerStore();
 const catalog = useCatalogStore();
@@ -35,6 +37,28 @@ function forget() {
   player.forgetToken();
   token.value = "";
 }
+
+// ---- Cloud archive ----
+const auth = useAuthStore();
+const saveState = ref<"idle" | "saving" | "saved">("idle");
+const saveError = ref<string | null>(null);
+
+async function saveToCloud() {
+  if (!player.b50) return;
+  saveState.value = "saving";
+  saveError.value = null;
+  try {
+    await api("POST", "/archives", { b50: player.b50 });
+    saveState.value = "saved";
+  } catch (err) {
+    saveError.value = (err as Error).message;
+    saveState.value = "idle";
+  }
+}
+watch(
+  () => player.b50,
+  () => (saveState.value = "idle"),
+);
 
 // ---- Image export ----
 const imageUrl = ref<string | null>(null);
@@ -148,7 +172,18 @@ onMounted(() => {
           <button type="button" class="secondary" :disabled="rendering || !catalog.catalog" @click="exportImage">
             {{ rendering ? "生成中…" : "生成 B50 图片" }}
           </button>
+          <button
+            v-if="auth.user"
+            type="button"
+            class="secondary"
+            :disabled="saveState !== 'idle'"
+            @click="saveToCloud"
+          >
+            {{ saveState === "saving" ? "保存中…" : saveState === "saved" ? "已保存" : "保存到云端" }}
+          </button>
+          <RouterLink v-if="saveState === 'saved'" to="/account" class="muted small">查看存档 →</RouterLink>
           <span v-if="imageError" class="err">{{ imageError }}</span>
+          <span v-if="saveError" class="err">{{ saveError }}</span>
         </div>
       </section>
 
@@ -270,8 +305,13 @@ onMounted(() => {
 
 .export {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 8px 10px;
+}
+
+.small {
+  font-size: 13px;
 }
 
 .secondary {

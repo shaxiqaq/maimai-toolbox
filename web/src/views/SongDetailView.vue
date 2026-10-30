@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { DIFFICULTY_NAMES } from "@mt/shared";
 import { computed, onMounted } from "vue";
+import FavoriteButton from "@/components/FavoriteButton.vue";
 import LevelPill from "@/components/LevelPill.vue";
 import SongJacket from "@/components/SongJacket.vue";
 import { useCatalogStore } from "@/stores/catalog";
@@ -35,6 +36,7 @@ function fmt(n: number, digits: number): string {
             <span class="badge" :class="song.type.toLowerCase()">{{ isUtage ? "宴" : song.type }}</span>
             <span v-if="song.isNew" class="badge new">新曲（计入 B15）</span>
           </div>
+          <FavoriteButton :song-id="song.id" class="fav" />
           <dl>
             <dt>ID</dt><dd>{{ song.id }}</dd>
             <dt>BPM</dt><dd>{{ song.bpm }}</dd>
@@ -127,6 +129,10 @@ function fmt(n: number, digits: number): string {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
+}
+
+.fav {
+  margin-top: 8px;
 }
 
 dl {
