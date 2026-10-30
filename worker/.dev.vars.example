@@ -1,0 +1,2 @@
+# Copy to .dev.vars for `wrangler dev` (it overrides wrangler.jsonc vars locally).
+ALLOWED_ORIGINS=http://localhost:5173

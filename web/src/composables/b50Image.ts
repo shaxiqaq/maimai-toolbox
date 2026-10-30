@@ -35,10 +35,11 @@ const FONT = '"PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", system-ui, s
 
 const IMAGE_TIMEOUT_MS = 15_000;
 
-/** Same-origin jacket; resolves null on error or timeout so one slow image never blocks the export. */
+/** Jacket image; resolves null on error or timeout so one slow image never blocks the export. */
 function loadImage(src: string): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
     const img = new Image();
+    img.crossOrigin = "anonymous"; // LXNS allows it; keeps the export canvas untainted
     const timer = setTimeout(() => resolve(null), IMAGE_TIMEOUT_MS);
     img.onload = () => {
       clearTimeout(timer);
@@ -197,7 +198,7 @@ export async function renderB50Image(b50: PlayerB50, songsById: Map<number, Song
 
   ctx.fillStyle = C.muted;
   ctx.font = `500 12px ${FONT}`;
-  ctx.fillText("舞萌工具箱 · 好友间自用，非商业 · 曲绘版权归 SEGA，图片经由落雪查分器获取", PAD, height - PAD - 14);
+  ctx.fillText("纱汐查分器 · 好友间自用，非商业 · 曲绘版权归 SEGA，图片经由落雪查分器获取", PAD, height - PAD - 14);
 
   return new Promise((resolve, reject) =>
     canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("图片生成失败"))), "image/png"),

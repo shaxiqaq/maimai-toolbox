@@ -77,7 +77,10 @@ export function chartPreviewUrl(song: Pick<Song, "title">): string {
   return `https://dxrating.net/?q=${encodeURIComponent(song.title)}`;
 }
 
-/** Jacket image URL, served by our backend from a disk cache of LXNS assets (keyed by the shared base id). */
+/**
+ * Jacket image URL on LXNS (keyed by the shared base id). It sends `Access-Control-Allow-Origin: *`,
+ * so images loaded with `crossOrigin = "anonymous"` can be drawn into exported canvases.
+ */
 export function jacketUrl(song: Pick<Song, "id" | "lxnsId">): string {
-  return `/api/jacket/${song.lxnsId ?? baseSongId(song.id)}.png`;
+  return `https://assets2.lxns.net/maimai/jacket/${song.lxnsId ?? baseSongId(song.id)}.png`;
 }

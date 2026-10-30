@@ -135,8 +135,8 @@ onMounted(() => {
           <button v-if="player.savedToken" type="button" class="link" @click="forget">忘记已保存的密钥</button>
         </div>
         <p class="hint muted">
-          在落雪查分器的账号设置中生成个人 API 密钥后粘贴到这里。密钥只保存在你自己的浏览器里，查询时经本站转发给落雪，
-          不会被记录。它相当于你落雪账号的钥匙，不要发给别人；泄露后可以在落雪重新生成。
+          在落雪查分器的账号设置中生成个人 API 密钥后粘贴到这里。密钥只保存在你自己的浏览器里，查询时由浏览器直接发给落雪，
+          不经过本站服务器。它相当于你落雪账号的钥匙，不要发给别人；泄露后可以在落雪重新生成。
         </p>
       </template>
       <p v-else class="hint muted">数据来自水鱼查分器公开查询，对方需未开启隐私。</p>

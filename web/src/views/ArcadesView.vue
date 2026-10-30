@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import type { Arcade, ArcadeRegion as Region } from "@mt/shared";
+import { arcadeRegions, arcadesNearby, searchArcades, type Arcade, type ArcadeRegion as Region } from "@mt/shared";
 import { onMounted, ref, watch } from "vue";
-import { api } from "@/api";
 import ArcadeCard from "@/components/ArcadeCard.vue";
 
 const mode = ref<"nearby" | "region">("nearby");
@@ -22,10 +21,7 @@ const GEO_ERRORS: Record<number, string> = {
 async function loadNearby() {
   if (!lastPosition) return;
   try {
-    nearbyList.value = await api<Arcade[]>(
-      "GET",
-      `/arcades/nearby?${new URLSearchParams({ lat: String(lastPosition.lat), lng: String(lastPosition.lng), radius: String(radius.value) })}`,
-    );
+    nearbyList.value = await arcadesNearby(lastPosition.lat, lastPosition.lng, radius.value);
     nearbyError.value = null;
   } catch (err) {
     nearbyError.value = (err as Error).message;
@@ -68,7 +64,7 @@ const regionError = ref<string | null>(null);
 
 async function loadChildren(parent: string) {
   try {
-    children.value = await api<Region[]>("GET", `/arcades/regions?parent=${encodeURIComponent(parent)}`);
+    children.value = await arcadeRegions(parent);
   } catch (err) {
     regionError.value = (err as Error).message;
   }
@@ -84,10 +80,7 @@ async function runSearch(reset = true) {
   searching.value = true;
   if (reset) page.value = 1;
   try {
-    const res = await api<{ arcades: Arcade[]; hasNextPage: boolean; total: number | null }>(
-      "GET",
-      `/arcades?${new URLSearchParams({ ...(region ? { region } : {}), q: q.value.trim(), page: String(page.value) })}`,
-    );
+    const res = await searchArcades({ regionId: region, q: q.value, page: page.value });
     results.value = reset ? res.arcades : [...results.value, ...res.arcades];
     hasNext.value = res.hasNextPage;
     total.value = res.total;
@@ -141,7 +134,7 @@ onMounted(() => void loadChildren("CN"));
             <option :value="50">50 km</option>
           </select>
         </label>
-        <p class="hint muted">位置只用于这次查询：精确到约 100 米后转发给机厅数据源，本站不记录。</p>
+        <p class="hint muted">位置只用于这次查询：在你的浏览器里精确到约 100 米后直接发给机厅数据源，不经过本站。</p>
       </section>
       <p v-if="nearbyError" class="state err">{{ nearbyError }}</p>
       <p v-else-if="nearbyList && !nearbyList.length" class="state muted">这个范围内没有舞萌机厅，试试扩大范围。</p>

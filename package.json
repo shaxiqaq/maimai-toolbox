@@ -4,13 +4,16 @@
   "type": "module",
   "packageManager": "pnpm@10.28.2",
   "scripts": {
-    "dev": "pnpm --parallel --filter ./server --filter ./web dev",
-    "dev:server": "pnpm --filter ./server dev",
+    "dev": "pnpm --parallel --filter ./worker --filter ./web dev",
+    "dev:worker": "pnpm --filter ./worker dev",
     "dev:web": "pnpm --filter ./web dev",
-    "sync": "pnpm --filter ./server sync",
     "build": "pnpm --filter ./web build",
+    "deploy": "pnpm build && pnpm --filter ./worker deploy",
+    "db:migrate:local": "pnpm --filter ./worker migrate:local",
+    "db:migrate:remote": "pnpm --filter ./worker migrate:remote",
+    "invite": "pnpm --filter ./worker invite",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
-    "invite": "pnpm --filter ./server invite"
+    "cf:login": "pnpm --filter ./worker cf:login"
   }
 }

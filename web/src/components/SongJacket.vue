@@ -14,6 +14,7 @@ const failed = ref(false);
       :alt="alt ?? ''"
       loading="lazy"
       decoding="async"
+      crossorigin="anonymous"
       referrerpolicy="no-referrer"
       @error="failed = true"
     />

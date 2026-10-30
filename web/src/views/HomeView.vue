@@ -26,7 +26,7 @@ const features: Feature[] = [
 <template>
   <main class="page">
     <section class="hero">
-      <h1>舞萌工具箱</h1>
+      <h1>纱汐查分器</h1>
       <p class="muted">好友间自用的舞萌 DX 查分与工具站。数据来自水鱼查分器与落雪查分器。</p>
     </section>
 

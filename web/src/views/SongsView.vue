@@ -102,7 +102,9 @@ onBeforeUnmount(() => observer?.disconnect());
     </div>
 
     <p v-if="store.error" class="state">加载失败：{{ store.error }}</p>
-    <p v-else-if="!store.catalog" class="state muted">正在加载曲库…</p>
+    <p v-else-if="!store.catalog" class="state muted">
+      正在加载曲库…（{{ store.progress }}/4，首次需下载约 4 MB，之后会缓存）
+    </p>
     <p v-else-if="!results.length" class="state muted">没有符合条件的曲目</p>
 
     <ul class="list">

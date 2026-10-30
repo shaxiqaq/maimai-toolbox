@@ -89,6 +89,7 @@ function loadImage(src: string): Promise<HTMLImageElement | null> {
   if (!p) {
     p = new Promise((resolve) => {
       const img = new Image();
+      img.crossOrigin = "anonymous";
       img.onload = () => resolve(img);
       img.onerror = () => resolve(null);
       img.src = src;
@@ -187,7 +188,7 @@ export async function drawBoard(canvas: HTMLCanvasElement, board: BingoBoard, so
 
   ctx.fillStyle = "#9aa49e";
   ctx.font = `500 16px ${FONT}`;
-  ctx.fillText("舞萌工具箱 · 曲绘版权归 SEGA", PAD, height - PAD - 6);
+  ctx.fillText("纱汐查分器 · 曲绘版权归 SEGA", PAD, height - PAD - 6);
 }
 
 // ---- Share codes (text only; songs travel as ids, images are reloaded) ----

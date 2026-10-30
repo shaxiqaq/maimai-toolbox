@@ -1,7 +1,7 @@
 /** Saved B50 snapshots per user, optionally shared through an unguessable, revocable link id. */
-import { randomBytes, randomUUID } from "node:crypto";
 import { B15_SIZE, B35_SIZE, summarizeB50, type PlayerB50, type PlayRecord } from "@mt/shared";
-import { db } from "./db";
+import { toBase64Url } from "./auth";
+import type { Db } from "./db";
 
 export const MAX_ARCHIVES = 100;
 
@@ -41,8 +41,6 @@ function sanitizeB50(input: unknown): PlayerB50 {
   if (!Array.isArray(lists[0]) || !Array.isArray(lists[1]) || !lists.every((l) => (l as unknown[]).every(isRecord))) {
     throw new ArchiveError(400, "B50 数据格式不正确");
   }
-  const b35 = (b.b35 as PlayRecord[]).slice(0, B35_SIZE);
-  const b15 = (b.b15 as PlayRecord[]).slice(0, B15_SIZE);
   const pick = (r: PlayRecord): PlayRecord => ({
     songId: r.songId,
     title: String(r.title).slice(0, 200),
@@ -64,8 +62,8 @@ function sanitizeB50(input: unknown): PlayerB50 {
     nickname: str(b.nickname, 64),
     plate: str(b.plate, 64),
     reportedRating: Number(b.reportedRating) || 0,
-    b35: b35.map(pick),
-    b15: b15.map(pick),
+    b35: (b.b35 as PlayRecord[]).slice(0, B35_SIZE).map(pick),
+    b15: (b.b15 as PlayRecord[]).slice(0, B15_SIZE).map(pick),
     fetchedAt: str(b.fetchedAt, 40) || new Date().toISOString(),
   };
 }
@@ -95,75 +93,85 @@ function validTitle(title: unknown, fallback: string): string {
   return t || fallback;
 }
 
-export function listArchives(userId: number): ArchiveSummary[] {
-  return (
-    db
-      .prepare("SELECT id, title, rating, source, share_id, created_at FROM b50_archives WHERE user_id = ? ORDER BY created_at DESC")
-      .all(userId) as unknown as Row[]
-  ).map(summary);
+export async function listArchives(db: Db, userId: number): Promise<ArchiveSummary[]> {
+  const rows = await db.all<Row>(
+    "SELECT id, title, rating, source, share_id, created_at FROM b50_archives WHERE user_id = ? ORDER BY created_at DESC",
+    userId,
+  );
+  return rows.map(summary);
 }
 
-export function saveArchive(userId: number, title: unknown, b50Input: unknown): ArchiveSummary {
-  const count = (db.prepare("SELECT COUNT(*) AS c FROM b50_archives WHERE user_id = ?").get(userId) as { c: number }).c;
+export async function saveArchive(db: Db, userId: number, title: unknown, b50Input: unknown): Promise<ArchiveSummary> {
+  const count = (await db.first<{ c: number }>("SELECT COUNT(*) AS c FROM b50_archives WHERE user_id = ?", userId))?.c ?? 0;
   if (count >= MAX_ARCHIVES) throw new ArchiveError(400, `最多保存 ${MAX_ARCHIVES} 份存档，请先删除一些`);
   const b50 = sanitizeB50(b50Input);
   const rating = summarizeB50(b50.b35, b50.b15).total;
   const row: Row = {
-    id: randomUUID(),
+    id: crypto.randomUUID(),
     title: validTitle(title, `${b50.nickname || b50.username} · ${rating}`),
     rating,
     source: b50.source,
     share_id: null,
     created_at: Date.now(),
   };
-  db.prepare(
+  await db.run(
     "INSERT INTO b50_archives (id, user_id, title, rating, source, data, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-  ).run(row.id, userId, row.title, row.rating, row.source, JSON.stringify(b50), row.created_at);
+    row.id,
+    userId,
+    row.title,
+    row.rating,
+    row.source,
+    JSON.stringify(b50),
+    row.created_at,
+  );
   return summary(row);
 }
 
-function ownRow(userId: number, id: string): Row {
-  const row = db
-    .prepare("SELECT id, title, rating, source, share_id, created_at, data FROM b50_archives WHERE id = ? AND user_id = ?")
-    .get(id, userId) as Row | undefined;
+async function ownRow(db: Db, userId: number, id: string): Promise<Row> {
+  const row = await db.first<Row>(
+    "SELECT id, title, rating, source, share_id, created_at, data FROM b50_archives WHERE id = ? AND user_id = ?",
+    id,
+    userId,
+  );
   if (!row) throw new ArchiveError(404, "存档不存在");
   return row;
 }
 
-export function getArchive(userId: number, id: string): Archive {
-  const row = ownRow(userId, id);
+export async function getArchive(db: Db, userId: number, id: string): Promise<Archive> {
+  const row = await ownRow(db, userId, id);
   return { ...summary(row), b50: JSON.parse(row.data!) as PlayerB50 };
 }
 
-export function renameArchive(userId: number, id: string, title: unknown): void {
-  const row = ownRow(userId, id);
-  db.prepare("UPDATE b50_archives SET title = ? WHERE id = ?").run(validTitle(title, row.title), id);
+export async function renameArchive(db: Db, userId: number, id: string, title: unknown): Promise<void> {
+  const row = await ownRow(db, userId, id);
+  await db.run("UPDATE b50_archives SET title = ? WHERE id = ?", validTitle(title, row.title), id);
 }
 
-export function deleteArchive(userId: number, id: string): void {
-  ownRow(userId, id);
-  db.prepare("DELETE FROM b50_archives WHERE id = ?").run(id);
+export async function deleteArchive(db: Db, userId: number, id: string): Promise<void> {
+  await ownRow(db, userId, id);
+  await db.run("DELETE FROM b50_archives WHERE id = ?", id);
 }
 
 /** Create (or return the existing) public share id. */
-export function shareArchive(userId: number, id: string): string {
-  const row = ownRow(userId, id);
+export async function shareArchive(db: Db, userId: number, id: string): Promise<string> {
+  const row = await ownRow(db, userId, id);
   if (row.share_id) return row.share_id;
-  const shareId = randomBytes(16).toString("base64url");
-  db.prepare("UPDATE b50_archives SET share_id = ? WHERE id = ?").run(shareId, id);
+  const shareId = toBase64Url(crypto.getRandomValues(new Uint8Array(16)));
+  await db.run("UPDATE b50_archives SET share_id = ? WHERE id = ?", shareId, id);
   return shareId;
 }
 
-export function unshareArchive(userId: number, id: string): void {
-  ownRow(userId, id);
-  db.prepare("UPDATE b50_archives SET share_id = NULL WHERE id = ?").run(id);
+export async function unshareArchive(db: Db, userId: number, id: string): Promise<void> {
+  await ownRow(db, userId, id);
+  await db.run("UPDATE b50_archives SET share_id = NULL WHERE id = ?", id);
 }
 
 /** Public read of a shared archive. Returns null for unknown or revoked links. */
-export function getShared(shareId: string): Pick<Archive, "title" | "rating" | "createdAt" | "b50"> | null {
+export async function getShared(db: Db, shareId: string): Promise<Pick<Archive, "title" | "rating" | "createdAt" | "b50"> | null> {
   if (!/^[A-Za-z0-9_-]{22}$/.test(shareId)) return null;
-  const row = db
-    .prepare("SELECT title, rating, created_at, data FROM b50_archives WHERE share_id = ?")
-    .get(shareId) as { title: string; rating: number; created_at: number; data: string } | undefined;
+  const row = await db.first<{ title: string; rating: number; created_at: number; data: string }>(
+    "SELECT title, rating, created_at, data FROM b50_archives WHERE share_id = ?",
+    shareId,
+  );
   return row ? { title: row.title, rating: row.rating, createdAt: row.created_at, b50: JSON.parse(row.data) } : null;
 }

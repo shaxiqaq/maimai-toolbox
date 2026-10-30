@@ -1,0 +1,31 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "maimai-toolbox",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-09-01",
+  // Served at https://maimai-toolbox.shaxi-chafenqi.workers.dev
+  "workers_dev": true,
+  // The built web app is served as static assets; only /api/* reaches the Worker.
+  "assets": {
+    "directory": "../web/dist",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "maimai-toolbox",
+      "database_id": "96112820-c5c4-4749-9d3a-68a86e9142a6",
+      "migrations_dir": "migrations"
+    }
+  ],
+  // Daily clean-up of expired sessions and old login attempts.
+  "triggers": { "crons": ["17 19 * * *"] },
+  "vars": {
+    "COOKIE_SECURE": "1",
+    // Extra origins allowed to make state-changing requests (comma-separated). Production needs none;
+    // local development sets the Vite origin in .dev.vars (see .dev.vars.example).
+    "ALLOWED_ORIGINS": ""
+  },
+  "observability": { "enabled": true }
+}

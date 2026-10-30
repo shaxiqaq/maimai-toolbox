@@ -25,7 +25,7 @@ const links = [
 <template>
   <header class="topbar">
     <div class="topbar-inner">
-      <RouterLink to="/" class="brand">舞萌工具箱</RouterLink>
+      <RouterLink to="/" class="brand">纱汐查分器</RouterLink>
       <nav class="nav" aria-label="主导航">
         <RouterLink v-for="l in links" :key="l.to" :to="l.to">{{ l.label }}</RouterLink>
       </nav>

@@ -1,4 +1,12 @@
-import { b50FromScores, indexRecords, type PlayerB50, type PlayerScores } from "@mt/shared";
+import {
+  b50FromScores,
+  fetchDivingFishB50,
+  fetchLxnsScores,
+  indexRecords,
+  parsePlayerQuery,
+  type PlayerB50,
+  type PlayerScores,
+} from "@mt/shared";
 import { defineStore } from "pinia";
 import { computed, ref, shallowRef } from "vue";
 import { useCatalogStore } from "./catalog";
@@ -53,27 +61,24 @@ export const usePlayerStore = defineStore("player", () => {
   const scores = shallowRef<PlayerScores | null>(null);
   const records = computed(() => indexRecords(scores.value?.records ?? []));
 
-  async function getJson<T>(res: Response): Promise<T> {
-    const body = (await res.json().catch(() => null)) as (T & { error?: string }) | null;
-    if (!res.ok || !body) throw new Error(body?.error ?? `HTTP ${res.status}`);
-    return body;
-  }
-
-  /** For LXNS, `value` is the personal token; `remember` keeps it in this browser only. */
+  /**
+   * For LXNS, `value` is the personal token; it goes straight from this browser to LXNS and is kept
+   * here only if `remember` is set. Diving-Fish is queried directly as well.
+   */
   async function lookup(kind: LookupKind, value: string, remember = false): Promise<void> {
     loading.value = true;
     error.value = null;
     try {
       if (kind === "lxns") {
-        const res = await fetch("/api/lxns/scores", { method: "POST", headers: { "X-User-Token": value } });
-        const fetched = await getJson<PlayerScores>(res);
         await catalog.load();
         if (!catalog.catalog) throw new Error(catalog.error ?? "曲库未加载");
+        const fetched = await fetchLxnsScores(value, catalog.catalog);
         scores.value = fetched;
         b50.value = b50FromScores(fetched, catalog.catalog);
       } else {
-        const res = await fetch(`/api/player/b50?${new URLSearchParams({ [kind]: value })}`);
-        b50.value = await getJson<PlayerB50>(res);
+        const query = parsePlayerQuery({ [kind]: value });
+        if (!query) throw new Error(kind === "qq" ? "QQ 号格式不正确" : "请填写水鱼用户名");
+        b50.value = await fetchDivingFishB50(query);
         scores.value = null;
       }
       lastLookup.value = { kind, value: kind === "lxns" ? "" : value };

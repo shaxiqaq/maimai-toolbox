@@ -1,7 +1,9 @@
 node_modules/
 dist/
 data/
+.wrangler/
 *.db
 *.db-*
 .env
+.dev.vars
 .DS_Store

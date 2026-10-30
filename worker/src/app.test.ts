@@ -1,13 +1,19 @@
-/** End-to-end API tests against a throwaway database. */
+/** End-to-end API tests against an in-memory database with the real migrations applied. */
 import assert from "node:assert/strict";
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { describe, it } from "node:test";
+import { createApp } from "./app";
+import { generateInviteCode, hashPassword, verifyPassword } from "./auth";
+import { memoryDb } from "./testing";
 
-process.env.DATA_DIR = mkdtempSync(join(tmpdir(), "mt-app-"));
-const { app } = await import("./app");
-const { createInvites, hashPassword, verifyPassword } = await import("./auth");
+const testDb = memoryDb();
+const app = createApp(() => testDb);
+const ENV = { COOKIE_SECURE: "1", ALLOWED_ORIGINS: "" };
+
+async function createInvites(n: number): Promise<string[]> {
+  const codes = Array.from({ length: n }, generateInviteCode);
+  for (const code of codes) await testDb.run("INSERT INTO invites (code, created_at) VALUES (?, ?)", code, Date.now());
+  return codes;
+}
 
 const ORIGIN = "http://localhost";
 
@@ -24,7 +30,7 @@ function client() {
         ...headers,
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
-    });
+    }, ENV);
     const set = res.headers.get("set-cookie");
     if (set) cookie = set.split(";")[0]!.includes("=;") || /Max-Age=0/i.test(set) ? "" : set.split(";")[0]!;
     const text = await res.text();
@@ -48,10 +54,11 @@ const record = (songId: number, rating: number) => ({
 });
 
 describe("passwords", () => {
-  it("hashes with a random salt and verifies", async () => {
+  it("hashes with PBKDF2 and a random salt, and verifies", async () => {
     const a = await hashPassword("correct horse");
     const b = await hashPassword("correct horse");
     assert.notEqual(a, b);
+    assert.match(a, /^pbkdf2-sha256\$20000\$/);
     assert.equal(await verifyPassword("correct horse", a), true);
     assert.equal(await verifyPassword("wrong horse", a), false);
   });
@@ -60,7 +67,7 @@ describe("passwords", () => {
 describe("auth", () => {
   it("registers with a one-time invite, sets an HttpOnly cookie, and logs in/out", async () => {
     const api = client();
-    const [code] = createInvites(1);
+    const [code] = await createInvites(1);
 
     assert.equal((await api("POST", "/auth/register", { username: "alice", password: "short", invite: code })).status, 400);
     assert.equal((await api("POST", "/auth/register", { username: "alice", password: "password123", invite: "NOPE" })).status, 400);
@@ -83,17 +90,17 @@ describe("auth", () => {
   });
 
   it("rejects duplicate usernames case-insensitively", async () => {
-    const [code] = createInvites(1);
+    const [code] = await createInvites(1);
     const res = await client()("POST", "/auth/register", { username: "Alice", password: "password123", invite: code });
     assert.equal(res.status, 409);
   });
 
   it("blocks cross-site form posts", async () => {
-    const res = await app.request(`${ORIGIN}/api/auth/logout`, {
-      method: "POST",
-      headers: { Origin: "https://evil.example", "Content-Type": "application/x-www-form-urlencoded" },
-      body: "",
-    });
+    const res = await app.request(
+      `${ORIGIN}/api/auth/logout`,
+      { method: "POST", headers: { Origin: "https://evil.example", "Content-Type": "application/x-www-form-urlencoded" }, body: "" },
+      ENV,
+    );
     assert.equal(res.status, 403);
   });
 
@@ -107,7 +114,7 @@ describe("auth", () => {
 
 async function signedIn(name: string) {
   const api = client();
-  const [code] = createInvites(1);
+  const [code] = await createInvites(1);
   assert.equal((await api("POST", "/auth/register", { username: name, password: "password123", invite: code })).status, 200);
   return api;
 }

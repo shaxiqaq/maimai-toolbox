@@ -1,6 +1,73 @@
-import { createHash } from "node:crypto";
-import { baseSongId, type Catalog, type Chart, type DifficultyIndex, type NoteCounts, type Song } from "@mt/shared";
-import { loadRawSources, type DfMusic, type RawSources } from "./sources";
+/**
+ * Public song-data sources and the merge into our catalog. All four allow cross-origin requests,
+ * so the browser fetches them directly and builds the catalog locally.
+ */
+import { baseSongId, type Catalog, type Chart, type DifficultyIndex, type NoteCounts, type Song } from "./catalog";
+
+export const SOURCES = {
+  dfMusic: "https://www.diving-fish.com/api/maimaidxprober/music_data",
+  dfStats: "https://www.diving-fish.com/api/maimaidxprober/chart_stats",
+  lxSongs: "https://maimai.lxns.net/api/v0/maimai/song/list",
+  lxAliases: "https://maimai.lxns.net/api/v0/maimai/alias/list",
+} as const;
+
+export type SourceName = keyof typeof SOURCES;
+
+export interface DfMusic {
+  id: string;
+  title: string;
+  type: "SD" | "DX";
+  ds: number[];
+  level: string[];
+  /** SD: [tap, hold, slide, break]; DX: [tap, hold, slide, touch, break]. */
+  charts: { notes: number[]; charter: string }[];
+  basic_info: {
+    title: string;
+    artist: string;
+    genre: string;
+    bpm: number;
+    release_date: string;
+    from: string;
+    is_new: boolean;
+  };
+}
+
+export interface DfChartStat {
+  cnt?: number;
+  fit_diff?: number;
+  avg?: number;
+}
+
+export interface DfStats {
+  charts: Record<string, DfChartStat[]>;
+}
+
+export interface LxSong {
+  id: number;
+  title: string;
+  version: number;
+  release_date: string;
+  /** Per chart-type difficulties; each carries the version that chart type was added in. */
+  difficulties: {
+    standard: { version: number }[];
+    dx: { version: number }[];
+  };
+}
+
+export interface LxSongList {
+  songs: LxSong[];
+}
+
+export interface LxAliasList {
+  aliases: { song_id: number; aliases: string[] }[];
+}
+
+export interface RawSources {
+  dfMusic: DfMusic[];
+  dfStats: DfStats;
+  lxSongs: LxSongList;
+  lxAliases: LxAliasList;
+}
 
 function noteCounts(type: DfMusic["type"], notes: number[]): NoteCounts {
   const [tap = 0, hold = 0, slide = 0] = notes;
@@ -16,8 +83,7 @@ export function buildCatalog(raw: RawSources): Catalog {
   const songs: Song[] = raw.dfMusic.map((m) => {
     const id = Number(m.id);
     const isUtage = id >= 100000;
-    const base = baseSongId(id);
-    const lx = isUtage ? undefined : lxById.get(base);
+    const lx = isUtage ? undefined : lxById.get(baseSongId(id));
     const stats = raw.dfStats.charts[m.id] ?? [];
 
     const charts: Chart[] = m.ds.map((ds, i) => {
@@ -62,36 +128,11 @@ export function buildCatalog(raw: RawSources): Catalog {
     counts.set(lxVersion, (counts.get(lxVersion) ?? 0) + 1);
     votes.set(s.version, counts);
   }
-  const versionRank = new Map(
-    [...votes].map(([name, counts]) => [name, [...counts].sort((a, b) => b[1] - a[1])[0]![0]]),
-  );
+  const versionRank = new Map([...votes].map(([name, counts]) => [name, [...counts].sort((a, b) => b[1] - a[1])[0]![0]]));
   const versions = [...new Set(songs.map((s) => s.version))].sort(
     (a, b) => (versionRank.get(a) ?? Infinity) - (versionRank.get(b) ?? Infinity),
   );
   const genres = [...new Set(songs.map((s) => s.genre))];
 
   return { builtAt: new Date().toISOString(), songs, versions, genres };
-}
-
-interface CatalogCache {
-  catalog: Catalog;
-  body: string;
-  etag: string;
-}
-
-let cache: CatalogCache | null = null;
-
-/** Rebuild the in-memory catalog from cached sources. Returns false when sources are missing. */
-export function rebuildCatalog(): boolean {
-  const raw = loadRawSources();
-  if (!raw) return false;
-  const catalog = buildCatalog(raw);
-  const body = JSON.stringify(catalog);
-  const etag = `"${createHash("sha1").update(body).digest("base64url")}"`;
-  cache = { catalog, body, etag };
-  return true;
-}
-
-export function getCatalog(): CatalogCache | null {
-  return cache;
 }
