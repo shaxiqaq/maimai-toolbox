@@ -12,36 +12,27 @@ import {
 import { computed, onMounted, ref, shallowRef, watch } from "vue";
 import LevelPill from "@/components/LevelPill.vue";
 import SongJacket from "@/components/SongJacket.vue";
+import { useMyRecords } from "@/composables/myRecords";
 import { useAuthStore } from "@/stores/auth";
 import { useCatalogStore } from "@/stores/catalog";
 import { useFriendsStore } from "@/stores/friends";
-import { usePlayerStore } from "@/stores/player";
 
 const props = defineProps<{ id: string }>();
 const PAGE = 100;
 
 const auth = useAuthStore();
 const catalog = useCatalogStore();
-const player = usePlayerStore();
 const friends = useFriendsStore();
 
 const theirs = shallowRef<ScoreSnapshot | null>(null);
 const theirsAt = ref(0);
-/** My last upload; used when this browser has no full score list loaded. */
-const ownStored = shallowRef<ScoreSnapshot | null>(null);
+const me = useMyRecords();
+const { records: myRecords, full: myFull, useStored, nickname: myNickname } = me;
 const error = ref<string | null>(null);
 const loading = ref(true);
 
 const friend = computed(() => friends.overview?.friends.find((f) => f.id === Number(props.id)) ?? null);
 
-/** Best available source for my side: live full list, then my full upload, then live B50, then any upload. */
-const useStored = computed(() => !player.scores && !!ownStored.value && (ownStored.value.full || !player.b50));
-const myRecords = computed<PlayRecord[]>(() => {
-  if (player.scores) return player.scores.records;
-  if (useStored.value && catalog.catalog) return snapshotRecords(ownStored.value!, catalog.catalog);
-  return player.b50 ? [...player.b50.b35, ...player.b50.b15] : [];
-});
-const myFull = computed(() => !!player.scores || (useStored.value && ownStored.value!.full));
 const theirRecords = computed(() => (theirs.value && catalog.catalog ? snapshotRecords(theirs.value, catalog.catalog) : []));
 
 const isNew = computed(() => {
@@ -118,11 +109,10 @@ async function load() {
   loading.value = true;
   error.value = null;
   try {
-    await Promise.all([catalog.load(), player.restore(), friends.overview ? null : friends.load()]);
+    await Promise.all([me.load(), friends.overview ? null : friends.load()]);
     const got = await friends.fetchSnapshot(Number(props.id));
     theirs.value = got.snapshot;
     theirsAt.value = got.updatedAt;
-    if (!player.scores) ownStored.value = (await friends.fetchOwnSnapshot().catch(() => null))?.snapshot ?? null;
   } catch (err) {
     error.value = (err as Error).message;
   } finally {
@@ -155,7 +145,7 @@ onMounted(() => {
       <section class="card versus">
         <div class="side">
           <div class="label muted">我</div>
-          <div class="nick">{{ (useStored ? ownStored?.nickname : player.b50?.nickname) || auth.user?.username }}</div>
+          <div class="nick">{{ myNickname }}</div>
           <div class="rating">{{ mine.rating }}</div>
           <div class="muted small">{{ mine.count }} 张 · SSS+ {{ mine.sssp }} · AP {{ mine.ap }}</div>
         </div>

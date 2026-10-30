@@ -14,3 +14,4 @@ export * from "./scores";
 export * from "./search";
 export * from "./probers";
 export * from "./sources";
+export * from "./tags";

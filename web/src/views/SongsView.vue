@@ -4,12 +4,14 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router";
 import LevelPill from "@/components/LevelPill.vue";
 import SongJacket from "@/components/SongJacket.vue";
-import { EMPTY_FILTER, searchSongs, songPlayCount, type SongFilter } from "@mt/shared";
+import { CHART_TAGS, EMPTY_FILTER, hasTag, isTagId, searchSongs, songPlayCount, type SongFilter } from "@mt/shared";
 import { useCatalogStore } from "@/stores/catalog";
+import { useTagsStore } from "@/stores/tags";
 
 const PAGE_SIZE = 60;
 
 const store = useCatalogStore();
+const tags = useTagsStore();
 const route = useRoute();
 const router = useRouter();
 
@@ -28,14 +30,16 @@ function filterFromQuery(): SongFilter {
 const filter = reactive<SongFilter>(filterFromQuery());
 /** "" keeps search relevance / newest first; "hot" orders by uploaded play count. */
 const sort = ref(route.query.sort === "hot" ? "hot" : "");
+/** Community tag; a song matches when one of its charts (at the chosen level, if any) carries it. */
+const tag = ref(isTagId(route.query.tag) ? route.query.tag : "");
 const shown = ref(PAGE_SIZE);
 
 // Keep the filter in the URL so results survive back-navigation and can be shared.
 watch(
-  [filter, sort],
-  ([f, s]) => {
+  [filter, sort, tag],
+  ([f, s, t]) => {
     shown.value = PAGE_SIZE;
-    const query = Object.fromEntries(Object.entries({ ...f, sort: s }).filter(([, v]) => v !== ""));
+    const query = Object.fromEntries(Object.entries({ ...f, sort: s, tag: t }).filter(([, v]) => v !== ""));
     void router.replace({ query });
   },
   { deep: true },
@@ -43,7 +47,10 @@ watch(
 
 const results = computed(() => {
   if (!store.catalog) return [];
-  const found = searchSongs(store.catalog.songs, filter);
+  const t = tag.value;
+  const found = searchSongs(store.catalog.songs, filter).filter(
+    (s) => !isTagId(t) || s.charts.some((c) => (!filter.level || c.level === filter.level) && hasTag(tags.counts, s.id, c.difficulty, t)),
+  );
   if (sort.value !== "hot") return found;
   const plays = new Map(found.map((s) => [s.id, songPlayCount(s)]));
   return [...found].sort((a, b) => plays.get(b.id)! - plays.get(a.id)!);
@@ -56,15 +63,17 @@ const levels = computed(() => {
   return [...set].sort((a, b) => parseFloat(a) - parseFloat(b) || a.length - b.length);
 });
 
-const hasFilter = computed(() => Object.values(filter).some((v) => v !== ""));
+const hasFilter = computed(() => Object.values(filter).some((v) => v !== "") || tag.value !== "");
 function reset() {
   Object.assign(filter, EMPTY_FILTER);
+  tag.value = "";
 }
 
 const sentinel = ref<HTMLElement | null>(null);
 let observer: IntersectionObserver | null = null;
 onMounted(() => {
   void store.load();
+  void tags.load();
   observer = new IntersectionObserver((entries) => {
     if (entries.some((e) => e.isIntersecting) && shown.value < results.value.length) shown.value += PAGE_SIZE;
   });
@@ -97,6 +106,10 @@ onBeforeUnmount(() => observer?.disconnect());
         <select v-model="filter.genre" class="field">
           <option value="">全部分类</option>
           <option v-for="g in store.catalog?.genres ?? []" :key="g" :value="g">{{ g }}</option>
+        </select>
+        <select v-model="tag" class="field" title="社区投票的谱面标签">
+          <option value="">全部标签</option>
+          <option v-for="t in CHART_TAGS" :key="t.id" :value="t.id">{{ t.label }}</option>
         </select>
         <select v-model="sort" class="field" title="热度按水鱼查分器用户上传的游玩记录数计算">
           <option value="">默认排序</option>
@@ -162,7 +175,7 @@ onBeforeUnmount(() => observer?.disconnect());
 
 @media (min-width: 720px) {
   .selects {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 }
 

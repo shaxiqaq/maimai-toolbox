@@ -299,3 +299,32 @@ describe("friends", () => {
     assert.equal((await client()("PUT", "/snapshot", snapshot)).status, 401);
   });
 });
+
+describe("chart tags", () => {
+  it("counts votes per chart, one per user and tag, and lets users take them back", async () => {
+    const a = await signedIn("tag-a");
+    const b = await signedIn("tag-b");
+    assert.equal((await client()("PUT", "/tags/834/3/spin")).status, 401);
+
+    await a("PUT", "/tags/834/3/spin");
+    await a("PUT", "/tags/834/3/spin"); // idempotent
+    await a("PUT", "/tags/834/3/stream");
+    await b("PUT", "/tags/834/3/spin");
+    await b("PUT", "/tags/834/4/burst");
+
+    const counts = (await client()("GET", "/tags")).body;
+    assert.deepEqual(counts["834:3"], { spin: 2, stream: 1 });
+    assert.deepEqual(counts["834:4"], { burst: 1 });
+    assert.deepEqual((await a("GET", "/tags/mine/834")).body, { 3: ["spin", "stream"] });
+
+    await a("DELETE", "/tags/834/3/spin");
+    assert.deepEqual((await client()("GET", "/tags")).body["834:3"], { spin: 1, stream: 1 });
+  });
+
+  it("rejects unknown tags and bad chart ids", async () => {
+    const a = await signedIn("tag-c");
+    assert.equal((await a("PUT", "/tags/834/3/not-a-tag")).status, 400);
+    assert.equal((await a("PUT", "/tags/834/9/spin")).status, 400);
+    assert.equal((await a("PUT", "/tags/abc/3/spin")).status, 400);
+  });
+});

@@ -1,23 +1,34 @@
 <script setup lang="ts">
 import {
+  CHART_TAGS,
   chartPreviewUrl,
+  chartTags,
   constantChanges,
   DIFFICULTY_NAMES,
   fetchConstantsAt,
   popularityRanks,
   songPlayCount,
+  TAG_GROUPS,
+  TAG_LABELS,
   type ConstantChange,
+  type TagId,
 } from "@mt/shared";
 import { computed, onMounted, ref, watch } from "vue";
 import FavoriteButton from "@/components/FavoriteButton.vue";
 import LevelPill from "@/components/LevelPill.vue";
 import SongJacket from "@/components/SongJacket.vue";
 import { cachedJson } from "@/data/cachedJson";
+import { useAuthStore } from "@/stores/auth";
 import { useCatalogStore } from "@/stores/catalog";
+import { useTagsStore } from "@/stores/tags";
 
 const props = defineProps<{ id: string }>();
 const store = useCatalogStore();
 onMounted(() => void store.load());
+
+const auth = useAuthStore();
+const tags = useTagsStore();
+onMounted(() => void tags.load());
 
 const song = computed(() => store.getSong(Number(props.id)));
 const isUtage = computed(() => song.value?.type === "UTAGE");
@@ -69,6 +80,30 @@ watch(
     historyState.value = "idle";
   },
 );
+
+// ---- Tags ----
+const editing = ref<number | null>(null);
+const tagError = ref<string | null>(null);
+const TAGS_BY_GROUP = TAG_GROUPS.map((g) => ({ group: g, tags: CHART_TAGS.filter((t) => t.group === g) }));
+const myTags = (difficulty: number) => tags.mine[Number(props.id)]?.[difficulty] ?? [];
+
+watch(
+  () => [props.id, auth.user?.id] as const,
+  ([id, uid]) => {
+    editing.value = null;
+    if (uid) void tags.loadMine(Number(id)).catch(() => undefined);
+  },
+  { immediate: true },
+);
+
+async function toggleTag(difficulty: number, tag: TagId) {
+  tagError.value = null;
+  try {
+    await tags.toggle(Number(props.id), difficulty, tag);
+  } catch (err) {
+    tagError.value = (err as Error).message;
+  }
+}
 
 function fmt(n: number, digits: number): string {
   return n.toFixed(digits);
@@ -155,6 +190,39 @@ function fmt(n: number, digits: number): string {
               · BREAK {{ c.notes.break }}
             </div>
             <div v-if="c.charter && c.charter !== '-'" class="charter muted">谱师：{{ c.charter }}</div>
+            <div v-if="!isUtage" class="tags">
+              <span v-for="t in chartTags(tags.counts, song.id, c.difficulty)" :key="t.tag" class="tag" :class="{ mine: myTags(c.difficulty).includes(t.tag) }">
+                {{ TAG_LABELS[t.tag] }} <b>{{ t.votes }}</b>
+              </span>
+              <button v-if="auth.user" type="button" class="tag-edit" @click="editing = editing === c.difficulty ? null : c.difficulty">
+                {{ editing === c.difficulty ? "完成" : "＋ 标签" }}
+              </button>
+              <RouterLink
+                v-else-if="auth.ready && !chartTags(tags.counts, song.id, c.difficulty).length"
+                :to="{ path: '/login', query: { next: `/songs/${song.id}` } }"
+                class="tag-edit muted"
+              >
+                登录后打标签
+              </RouterLink>
+            </div>
+            <div v-if="editing === c.difficulty" class="tag-picker">
+              <div v-for="g in TAGS_BY_GROUP" :key="g.group" class="tag-group">
+                <span class="muted">{{ g.group }}</span>
+                <button
+                  v-for="t in g.tags"
+                  :key="t.id"
+                  type="button"
+                  class="tag pick"
+                  :class="{ mine: myTags(c.difficulty).includes(t.id) }"
+                  :aria-pressed="myTags(c.difficulty).includes(t.id)"
+                  @click="toggleTag(c.difficulty, t.id)"
+                >
+                  {{ t.label }}
+                </button>
+              </div>
+              <p v-if="tagError" class="tag-err">{{ tagError }}</p>
+              <p class="muted small">点选你觉得这张谱面具有的特点，再点一次取消。所有人的投票会汇总显示，并用于能力雷达图。</p>
+            </div>
           </article>
         </div>
       </section>
@@ -324,6 +392,79 @@ dd {
 
 .stats b {
   font-size: 15px;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.tag {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  font-size: 12px;
+}
+
+.tag b {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.tag.mine {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.tag-edit {
+  padding: 1px 8px;
+  border: 1px dashed var(--border);
+  border-radius: 999px;
+  background: none;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.tag-picker {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  display: grid;
+  gap: 6px;
+}
+
+.tag-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.tag-group > span {
+  width: 3em;
+}
+
+.tag.pick {
+  cursor: pointer;
+}
+
+.tag.pick.mine {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.tag-err {
+  margin: 0;
+  color: var(--warn);
+  font-size: 12px;
+}
+
+.tag-picker p {
+  margin: 0;
 }
 
 .load {

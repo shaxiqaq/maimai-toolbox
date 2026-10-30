@@ -16,6 +16,7 @@ const features: Feature[] = [
   { title: "上分推荐", desc: "按 B50 底分推荐目标谱面", to: "/recommend" },
   { title: "计算器", desc: "达成率、容错与 Rating", to: "/calculator" },
   { title: "随机抽歌", desc: "按条件随机选曲", to: "/lottery" },
+  { title: "能力雷达", desc: "按谱面标签看擅长与薄弱的类型", to: "/skills" },
   { title: "好友对比", desc: "互加好友，逐张谱面比成绩（需登录）", to: "/friends" },
   { title: "收藏夹", desc: "云同步的歌单（需登录）", to: "/favorites" },
   { title: "谱面确认", desc: "曲目详情页跳转 DXRating 看谱面视频", to: "/songs" },

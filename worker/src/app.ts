@@ -38,6 +38,7 @@ import {
   requestFriend,
   saveSnapshot,
 } from "./friends";
+import { addVote, myVotes, parseChart, parseTag, removeVote, tagCounts, TagError } from "./tags";
 import { addSong, createFolder, deleteFolder, FavoritesError, listFolders, removeSong, renameFolder } from "./favorites";
 
 export interface Bindings {
@@ -80,7 +81,7 @@ export function createApp(dbFor: (env: Bindings) => Db) {
   });
 
   app.onError((err, c) => {
-    if (err instanceof AuthError || err instanceof FavoritesError || err instanceof ArchiveError || err instanceof FriendsError) {
+    if (err instanceof AuthError || err instanceof FavoritesError || err instanceof ArchiveError || err instanceof FriendsError || err instanceof TagError) {
       return c.json({ error: err.message }, err.status);
     }
     if (err instanceof HTTPException) return err.getResponse();
@@ -184,6 +185,30 @@ export function createApp(dbFor: (env: Bindings) => Db) {
 
   app.delete("/favorites/:folderId/songs/:songId", async (c) => {
     await removeSong(db(c), requireUser(c).id, c.req.param("folderId"), Number(c.req.param("songId")));
+    return c.json({ ok: true });
+  });
+
+  // ---- Chart tags ----
+
+  app.get("/tags", async (c) => {
+    c.header("Cache-Control", "public, max-age=60");
+    return c.json(await tagCounts(db(c)));
+  });
+
+  app.get("/tags/mine/:songId", async (c) => {
+    const { songId } = parseChart(c.req.param("songId"), "0");
+    return c.json(await myVotes(db(c), requireUser(c).id, songId));
+  });
+
+  app.put("/tags/:songId/:difficulty/:tag", async (c) => {
+    const user = requireUser(c);
+    await addVote(db(c), user.id, parseChart(c.req.param("songId"), c.req.param("difficulty")), parseTag(c.req.param("tag")));
+    return c.json({ ok: true });
+  });
+
+  app.delete("/tags/:songId/:difficulty/:tag", async (c) => {
+    const user = requireUser(c);
+    await removeVote(db(c), user.id, parseChart(c.req.param("songId"), c.req.param("difficulty")), parseTag(c.req.param("tag")));
     return c.json({ ok: true });
   });
 
