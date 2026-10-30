@@ -1,0 +1,14 @@
+{
+  "name": "maimai-toolbox",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.28.2",
+  "scripts": {
+    "dev": "pnpm --parallel --filter ./server --filter ./web dev",
+    "dev:server": "pnpm --filter ./server dev",
+    "dev:web": "pnpm --filter ./web dev",
+    "sync": "pnpm --filter ./server sync",
+    "build": "pnpm --filter ./web build",
+    "typecheck": "pnpm -r typecheck"
+  }
+}

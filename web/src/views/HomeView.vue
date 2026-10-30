@@ -1,0 +1,90 @@
+<script setup lang="ts">
+interface Feature {
+  title: string;
+  desc: string;
+  to?: string;
+  /** Milestone the feature is planned for, shown while unavailable. */
+  plannedFor?: string;
+}
+
+const features: Feature[] = [
+  { title: "曲库", desc: "搜索曲目、别名、定数和拟合难度", to: "/songs" },
+  { title: "B50", desc: "查询 Best 50 与 Rating", plannedFor: "M1" },
+  { title: "成绩", desc: "全部游玩记录与筛选", plannedFor: "M1" },
+  { title: "完成度", desc: "牌子与版本完成进度", plannedFor: "M2" },
+  { title: "上分推荐", desc: "按当前 Rating 推荐目标谱面", plannedFor: "M2" },
+  { title: "计算器", desc: "达成率、损失与 Rank", plannedFor: "M3" },
+  { title: "随机抽歌", desc: "按条件随机选曲", plannedFor: "M3" },
+  { title: "收藏夹", desc: "云同步的歌单", plannedFor: "M3" },
+  { title: "谱面播放", desc: "simai 谱面预览与播放", plannedFor: "M4" },
+  { title: "机厅", desc: "附近机厅查询", plannedFor: "M5" },
+];
+</script>
+
+<template>
+  <main class="page">
+    <section class="hero">
+      <h1>舞萌工具箱</h1>
+      <p class="muted">好友间自用的舞萌 DX 查分与工具站。数据来自水鱼查分器与落雪查分器。</p>
+    </section>
+
+    <section class="grid">
+      <component
+        :is="f.to ? 'RouterLink' : 'div'"
+        v-for="f in features"
+        :key="f.title"
+        :to="f.to"
+        class="card tile"
+        :class="{ disabled: !f.to }"
+      >
+        <div class="tile-head">
+          <strong>{{ f.title }}</strong>
+          <span v-if="f.plannedFor" class="badge">{{ f.plannedFor }}</span>
+        </div>
+        <p class="muted">{{ f.desc }}</p>
+      </component>
+    </section>
+  </main>
+</template>
+
+<style scoped>
+.hero h1 {
+  margin: 8px 0 4px;
+  font-size: 26px;
+}
+
+.hero p {
+  margin: 0 0 20px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.tile {
+  padding: 14px;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.tile:not(.disabled):hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.tile.disabled {
+  opacity: 0.55;
+}
+
+.tile-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tile p {
+  margin: 6px 0 0;
+  font-size: 13px;
+}
+</style>
