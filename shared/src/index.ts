@@ -2,6 +2,7 @@ export * from "./arcade";
 export * from "./calculator";
 export * from "./catalog";
 export * from "./collections";
+export * from "./compare";
 export * from "./highlights";
 export * from "./history";
 export * from "./player";

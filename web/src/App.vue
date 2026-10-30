@@ -1,10 +1,27 @@
 <script setup lang="ts">
-import { computed, onMounted } from "vue";
+import { computed, onMounted, watch } from "vue";
 import { useTheme } from "./composables/theme";
 import { useAuthStore } from "./stores/auth";
+import { useFriendsStore } from "./stores/friends";
+import { usePlayerStore } from "./stores/player";
 
 const auth = useAuthStore();
+const player = usePlayerStore();
+const friends = useFriendsStore();
 onMounted(() => void auth.refresh());
+
+// Keep the score snapshot friends see in step with each lookup, if the user turned that on.
+watch(
+  () => [player.b50, auth.user] as const,
+  ([b50, user]) => {
+    if (b50 && user) void friends.autoUpload();
+  },
+);
+// A different account must not see the previous one's friends.
+watch(
+  () => auth.user?.id,
+  () => friends.reset(),
+);
 
 const { choice, cycle } = useTheme();
 const themeLabel = computed(() => ({ system: "跟随系统", light: "浅色", dark: "深色" })[choice.value]);
@@ -17,6 +34,7 @@ const links = [
   { to: "/calculator", label: "计算器" },
   { to: "/lottery", label: "抽歌" },
   { to: "/favorites", label: "收藏" },
+  { to: "/friends", label: "好友" },
   { to: "/arcades", label: "机厅" },
   { to: "/songs", label: "曲库" },
 ];

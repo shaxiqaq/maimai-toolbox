@@ -223,3 +223,79 @@ describe("archives", () => {
     assert.deepEqual((await api("GET", "/archives")).body, []);
   });
 });
+
+describe("friends", () => {
+  const snapshot = {
+    source: "lxns",
+    nickname: "Bea",
+    full: true,
+    rating: 15000,
+    records: [[834, 3, 100.5, 2000, "ap", "fsd"]],
+    fetchedAt: "2026-10-30T00:00:00.000Z",
+  };
+  const idOf = async (api: Awaited<ReturnType<typeof signedIn>>) => (await api("GET", "/auth/me")).body.user.id as number;
+
+  it("sends, accepts and removes friend requests", async () => {
+    const a = await signedIn("fr-a");
+    const b = await signedIn("fr-b");
+    const aId = await idOf(a);
+    const bId = await idOf(b);
+
+    assert.equal((await a("POST", "/friends/requests", { username: "nobody-here" })).status, 404);
+    assert.equal((await a("POST", "/friends/requests", { username: "FR-A" })).status, 400, "not yourself");
+    assert.equal((await a("POST", "/friends/requests", { username: "FR-B" })).body.status, "requested");
+    assert.deepEqual((await b("GET", "/friends")).body.incoming.map((r: { id: number }) => r.id), [aId]);
+    assert.deepEqual((await a("GET", "/friends")).body.outgoing.map((r: { id: number }) => r.id), [bId]);
+
+    assert.equal((await b("POST", `/friends/requests/${aId}/accept`)).status, 200);
+    const view = (await a("GET", "/friends")).body;
+    assert.deepEqual(view.friends.map((f: { username: string }) => f.username), ["fr-b"]);
+    assert.deepEqual([view.incoming, view.outgoing], [[], []]);
+    assert.equal((await a("POST", "/friends/requests", { username: "fr-b" })).status, 409);
+
+    await b("DELETE", `/friends/${aId}`);
+    assert.deepEqual((await a("GET", "/friends")).body.friends, []);
+  });
+
+  it("accepts automatically when both sides ask, and lets requests be declined", async () => {
+    const a = await signedIn("fr-c");
+    const b = await signedIn("fr-d");
+    await a("POST", "/friends/requests", { username: "fr-d" });
+    assert.equal((await b("POST", "/friends/requests", { username: "fr-c" })).body.status, "accepted");
+    assert.equal((await a("GET", "/friends")).body.friends.length, 1);
+
+    const c = await signedIn("fr-e");
+    await c("POST", "/friends/requests", { username: "fr-c" });
+    await a("DELETE", `/friends/requests/${await idOf(c)}`);
+    assert.deepEqual((await c("GET", "/friends")).body.outgoing, []);
+  });
+
+  it("shares a sanitized score snapshot with friends only", async () => {
+    const a = await signedIn("fr-f");
+    const b = await signedIn("fr-g");
+    const stranger = await signedIn("fr-h");
+    const aId = await idOf(a);
+
+    assert.equal((await a("PUT", "/snapshot", { ...snapshot, records: [[834, 3, 100.5, 2000, "bogus", ""]] })).status, 400);
+    const info = (await a("PUT", "/snapshot", { ...snapshot, extra: "<x>" })).body;
+    assert.deepEqual([info.recordCount, info.rating, info.full], [1, 15000, true]);
+    assert.equal((await a("GET", "/friends")).body.snapshot.recordCount, 1);
+
+    assert.equal((await stranger("GET", `/friends/${aId}/snapshot`)).status, 403);
+    await a("POST", "/friends/requests", { username: "fr-g" });
+    await b("POST", `/friends/requests/${aId}/accept`);
+    const got = await b("GET", `/friends/${aId}/snapshot`);
+    assert.equal(got.status, 200);
+    assert.deepEqual(got.body.snapshot.records, snapshot.records);
+    assert.equal(got.body.snapshot.extra, undefined);
+    assert.equal((await b("GET", "/friends")).body.friends[0].snapshot.nickname, "Bea");
+
+    await a("DELETE", "/snapshot");
+    assert.equal((await b("GET", `/friends/${aId}/snapshot`)).status, 404);
+  });
+
+  it("requires login", async () => {
+    assert.equal((await client()("GET", "/friends")).status, 401);
+    assert.equal((await client()("PUT", "/snapshot", snapshot)).status, 401);
+  });
+});

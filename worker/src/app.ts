@@ -27,6 +27,17 @@ import {
   type User,
 } from "./auth";
 import type { Db } from "./db";
+import {
+  acceptRequest,
+  deleteSnapshot,
+  dropRequest,
+  FriendsError,
+  overview,
+  readSnapshot,
+  removeFriend,
+  requestFriend,
+  saveSnapshot,
+} from "./friends";
 import { addSong, createFolder, deleteFolder, FavoritesError, listFolders, removeSong, renameFolder } from "./favorites";
 
 export interface Bindings {
@@ -69,7 +80,7 @@ export function createApp(dbFor: (env: Bindings) => Db) {
   });
 
   app.onError((err, c) => {
-    if (err instanceof AuthError || err instanceof FavoritesError || err instanceof ArchiveError) {
+    if (err instanceof AuthError || err instanceof FavoritesError || err instanceof ArchiveError || err instanceof FriendsError) {
       return c.json({ error: err.message }, err.status);
     }
     if (err instanceof HTTPException) return err.getResponse();
@@ -173,6 +184,60 @@ export function createApp(dbFor: (env: Bindings) => Db) {
 
   app.delete("/favorites/:folderId/songs/:songId", async (c) => {
     await removeSong(db(c), requireUser(c).id, c.req.param("folderId"), Number(c.req.param("songId")));
+    return c.json({ ok: true });
+  });
+
+  // ---- Friends and score snapshots ----
+
+  const userIdParam = (c: C) => {
+    const id = Number(c.req.param("userId"));
+    if (!Number.isInteger(id) || id <= 0) throw new FriendsError(400, "用户 ID 无效");
+    return id;
+  };
+
+  app.get("/friends", async (c) => c.json(await overview(db(c), requireUser(c).id)));
+
+  app.post("/friends/requests", async (c) => {
+    const user = requireUser(c);
+    const body = await jsonBody(c);
+    // Every attempt counts, so the endpoint cannot be used to probe which usernames exist.
+    const key = `friend-request:${user.id}`;
+    await checkRateLimit(db(c), key);
+    await recordAttempt(db(c), key);
+    return c.json({ status: await requestFriend(db(c), user.id, body.username) });
+  });
+
+  app.post("/friends/requests/:userId/accept", async (c) => {
+    await acceptRequest(db(c), requireUser(c).id, userIdParam(c));
+    return c.json({ ok: true });
+  });
+
+  app.delete("/friends/requests/:userId", async (c) => {
+    await dropRequest(db(c), requireUser(c).id, userIdParam(c));
+    return c.json({ ok: true });
+  });
+
+  app.delete("/friends/:userId", async (c) => {
+    await removeFriend(db(c), requireUser(c).id, userIdParam(c));
+    return c.json({ ok: true });
+  });
+
+  /** The snapshot is stored as JSON already; splice it in rather than parsing it on the Worker. */
+  app.get("/friends/:userId/snapshot", async (c) => {
+    const { data, updatedAt } = await readSnapshot(db(c), requireUser(c).id, userIdParam(c));
+    return c.body(`{"updatedAt":${updatedAt},"snapshot":${data}}`, 200, { "Content-Type": "application/json; charset=utf-8" });
+  });
+
+  app.put("/snapshot", async (c) => c.json(await saveSnapshot(db(c), requireUser(c).id, await jsonBody(c))));
+
+  app.get("/snapshot", async (c) => {
+    const user = requireUser(c);
+    const { data, updatedAt } = await readSnapshot(db(c), user.id, user.id);
+    return c.body(`{"updatedAt":${updatedAt},"snapshot":${data}}`, 200, { "Content-Type": "application/json; charset=utf-8" });
+  });
+
+  app.delete("/snapshot", async (c) => {
+    await deleteSnapshot(db(c), requireUser(c).id);
     return c.json({ ok: true });
   });
 
