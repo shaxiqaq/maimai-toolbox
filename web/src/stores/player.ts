@@ -1,6 +1,7 @@
-import type { PlayerB50 } from "@mt/shared";
+import { b50FromScores, indexRecords, type PlayerB50, type PlayerScores } from "@mt/shared";
 import { defineStore } from "pinia";
-import { ref, shallowRef } from "vue";
+import { computed, ref, shallowRef } from "vue";
+import { useCatalogStore } from "./catalog";
 
 export type LookupKind = "username" | "qq" | "lxns";
 
@@ -40,6 +41,7 @@ function readLastLookup(): LastLookup | null {
 }
 
 export const usePlayerStore = defineStore("player", () => {
+  const catalog = useCatalogStore();
   const b50 = shallowRef<PlayerB50 | null>(null);
   const loading = ref(false);
   const error = ref<string | null>(null);
@@ -47,12 +49,12 @@ export const usePlayerStore = defineStore("player", () => {
   /** Remembered LXNS personal token, if the user opted in on this device. */
   const savedToken = ref(storageGet(TOKEN_KEY) ?? "");
 
-  async function request(kind: LookupKind, value: string): Promise<PlayerB50> {
-    const res =
-      kind === "lxns"
-        ? await fetch("/api/lxns/b50", { method: "POST", headers: { "X-User-Token": value } })
-        : await fetch(`/api/player/b50?${new URLSearchParams({ [kind]: value })}`);
-    const body = (await res.json().catch(() => null)) as (PlayerB50 & { error?: string }) | null;
+  /** Full best-score list; only available for LXNS lookups. */
+  const scores = shallowRef<PlayerScores | null>(null);
+  const records = computed(() => indexRecords(scores.value?.records ?? []));
+
+  async function getJson<T>(res: Response): Promise<T> {
+    const body = (await res.json().catch(() => null)) as (T & { error?: string }) | null;
     if (!res.ok || !body) throw new Error(body?.error ?? `HTTP ${res.status}`);
     return body;
   }
@@ -62,7 +64,18 @@ export const usePlayerStore = defineStore("player", () => {
     loading.value = true;
     error.value = null;
     try {
-      b50.value = await request(kind, value);
+      if (kind === "lxns") {
+        const res = await fetch("/api/lxns/scores", { method: "POST", headers: { "X-User-Token": value } });
+        const fetched = await getJson<PlayerScores>(res);
+        await catalog.load();
+        if (!catalog.catalog) throw new Error(catalog.error ?? "曲库未加载");
+        scores.value = fetched;
+        b50.value = b50FromScores(fetched, catalog.catalog);
+      } else {
+        const res = await fetch(`/api/player/b50?${new URLSearchParams({ [kind]: value })}`);
+        b50.value = await getJson<PlayerB50>(res);
+        scores.value = null;
+      }
       lastLookup.value = { kind, value: kind === "lxns" ? "" : value };
       storageSet(LOOKUP_KEY, JSON.stringify(lastLookup.value));
       if (kind === "lxns") {
@@ -81,5 +94,13 @@ export const usePlayerStore = defineStore("player", () => {
     storageSet(TOKEN_KEY, null);
   }
 
-  return { b50, loading, error, lastLookup, savedToken, lookup, forgetToken };
+  /** Re-run the remembered lookup when a page opens without data. */
+  async function restore(): Promise<void> {
+    if (b50.value || loading.value || !lastLookup.value) return;
+    const { kind, value } = lastLookup.value;
+    if (kind === "lxns" && savedToken.value) await lookup("lxns", savedToken.value, true);
+    else if (kind !== "lxns" && value) await lookup(kind, value);
+  }
+
+  return { b50, scores, records, loading, error, lastLookup, savedToken, lookup, forgetToken, restore };
 });

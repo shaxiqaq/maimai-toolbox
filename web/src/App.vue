@@ -4,19 +4,24 @@ import { useTheme } from "./composables/theme";
 
 const { choice, cycle } = useTheme();
 const themeLabel = computed(() => ({ system: "跟随系统", light: "浅色", dark: "深色" })[choice.value]);
+
+const links = [
+  { to: "/b50", label: "B50" },
+  { to: "/records", label: "成绩" },
+  { to: "/progress", label: "进度" },
+  { to: "/recommend", label: "推荐" },
+  { to: "/songs", label: "曲库" },
+];
 </script>
 
 <template>
   <header class="topbar">
     <div class="topbar-inner">
       <RouterLink to="/" class="brand">舞萌工具箱</RouterLink>
-      <nav class="nav">
-        <RouterLink to="/b50">B50</RouterLink>
-        <RouterLink to="/songs">曲库</RouterLink>
-        <button class="theme" type="button" :title="`主题：${themeLabel}`" @click="cycle">
-          {{ themeLabel }}
-        </button>
+      <nav class="nav" aria-label="主导航">
+        <RouterLink v-for="l in links" :key="l.to" :to="l.to">{{ l.label }}</RouterLink>
       </nav>
+      <button class="theme" type="button" :title="`主题：${themeLabel}`" @click="cycle">{{ themeLabel }}</button>
     </div>
   </header>
   <RouterView />
@@ -36,23 +41,33 @@ const themeLabel = computed(() => ({ system: "跟随系统", light: "浅色", da
 .topbar-inner {
   max-width: 960px;
   margin: 0 auto;
-  height: 52px;
   padding: 0 16px;
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas: "brand nav theme";
   align-items: center;
-  justify-content: space-between;
+  gap: 4px 16px;
+  min-height: 52px;
 }
 
 .brand {
+  grid-area: brand;
   font-weight: 700;
   letter-spacing: 0.02em;
 }
 
 .nav {
+  grid-area: nav;
   display: flex;
-  align-items: center;
   gap: 16px;
   font-size: 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.nav a {
+  flex: none;
+  padding: 6px 0;
 }
 
 .nav a.router-link-active {
@@ -61,11 +76,23 @@ const themeLabel = computed(() => ({ system: "跟随系统", light: "浅色", da
 }
 
 .theme {
+  grid-area: theme;
   border: 1px solid var(--border);
   background: var(--surface);
   border-radius: 999px;
   padding: 2px 10px;
   font-size: 12px;
   cursor: pointer;
+}
+
+/* Phones: brand + theme on the first row, the nav scrolls on its own row. */
+@media (max-width: 559px) {
+  .topbar-inner {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "brand theme"
+      "nav nav";
+    padding-top: 8px;
+  }
 }
 </style>

@@ -4,12 +4,11 @@
  */
 import { createHash } from "node:crypto";
 import {
-  buildB50,
   withRating,
   type Catalog,
   type ComboFlag,
   type DifficultyIndex,
-  type PlayerB50,
+  type PlayerScores,
   type PlayRecord,
   type SyncFlag,
 } from "@mt/shared";
@@ -105,13 +104,14 @@ async function call<T>(path: string, token: string): Promise<T> {
   return body.data;
 }
 
-const cache = new Map<string, { at: number; value: PlayerB50 }>();
+const cache = new Map<string, { at: number; value: PlayerScores }>();
 
 export function isPlausibleToken(token: string | undefined): token is string {
   return !!token && token.length >= 16 && token.length <= 256 && /^[\x21-\x7e]+$/.test(token);
 }
 
-export async function fetchLxnsB50(token: string, catalog: Catalog): Promise<PlayerB50> {
+/** All of the player's best scores; the client derives B50, progress and suggestions from them. */
+export async function fetchLxnsScores(token: string, catalog: Catalog): Promise<PlayerScores> {
   const key = createHash("sha256").update(token).digest("hex");
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.value;
@@ -119,19 +119,15 @@ export async function fetchLxnsB50(token: string, catalog: Catalog): Promise<Pla
   // Sequential on purpose: LXNS rate-limits per IP and every user shares this server's IP.
   const player = await call<LxPlayer>("/player", token);
   const scores = await call<LxScore[]>("/player/scores", token);
-
-  const newIds = new Set(catalog.songs.filter((s) => s.isNew).map((s) => s.id));
   const { records, unmatched } = toRecords(scores, catalog);
-  const { b35, b15 } = buildB50(records, (id) => newIds.has(id));
 
-  const value: PlayerB50 = {
+  const value: PlayerScores = {
     source: "lxns",
     username: String(player.friend_code),
     nickname: player.name,
     plate: player.name_plate?.name ?? "",
     reportedRating: player.rating,
-    b35,
-    b15,
+    records,
     unmatched,
     fetchedAt: new Date().toISOString(),
   };

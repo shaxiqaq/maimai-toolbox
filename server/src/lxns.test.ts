@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, it, mock } from "node:test";
 import type { Catalog, Chart, Song } from "@mt/shared";
-import { catalogIdOf, fetchLxnsB50, isPlausibleToken, toRecords, type LxScore } from "./lxns";
+import { catalogIdOf, fetchLxnsScores, isPlausibleToken, toRecords, type LxScore } from "./lxns";
 import { PlayerLookupError } from "./players";
 
 const chart = (difficulty: 0 | 1 | 2 | 3 | 4, level: string, ds: number): Chart => ({
@@ -79,8 +79,8 @@ describe("toRecords", () => {
   });
 });
 
-describe("fetchLxnsB50", () => {
-  it("builds B50 from player + scores and sends the token as a header only", async () => {
+describe("fetchLxnsScores", () => {
+  it("returns profile + all records and sends the token as a header only", async () => {
     const seen: { url: string; token: string | null }[] = [];
     mock.method(globalThis, "fetch", async (url: string, init: RequestInit) => {
       seen.push({ url, token: new Headers(init.headers).get("X-User-Token") });
@@ -90,11 +90,12 @@ describe("fetchLxnsB50", () => {
       return new Response(JSON.stringify({ success: true, code: 200, data }), { status: 200 });
     });
     const token = "test-token-0123456789abcdef";
-    const b50 = await fetchLxnsB50(token, catalog);
-    assert.equal(b50.source, "lxns");
-    assert.equal(b50.nickname, "ナマエ");
-    assert.deepEqual(b50.b35.map((r) => r.songId), [8]);
-    assert.deepEqual(b50.b15.map((r) => r.songId), [11663]);
+    const scores = await fetchLxnsScores(token, catalog);
+    assert.equal(scores.source, "lxns");
+    assert.equal(scores.nickname, "ナマエ");
+    assert.equal(scores.username, "123456789");
+    assert.deepEqual(scores.records.map((r) => r.songId), [8, 11663, 100018]);
+    assert.equal(scores.unmatched, 0);
     assert.equal(seen.length, 2);
     assert.ok(seen.every((s) => s.token === token && !s.url.includes(token)));
   });
@@ -102,7 +103,7 @@ describe("fetchLxnsB50", () => {
   it("maps an invalid token to a 403 with a clear message", async () => {
     mock.method(globalThis, "fetch", async () => new Response("{}", { status: 401 }));
     await assert.rejects(
-      fetchLxnsB50("another-token-0123456789", catalog),
+      fetchLxnsScores("another-token-0123456789", catalog),
       (e) => e instanceof PlayerLookupError && e.status === 403,
     );
   });
