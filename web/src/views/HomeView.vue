@@ -16,7 +16,7 @@ const features: Feature[] = [
   { title: "计算器", desc: "达成率、容错与 Rating", to: "/calculator" },
   { title: "随机抽歌", desc: "按条件随机选曲", to: "/lottery" },
   { title: "收藏夹", desc: "云同步的歌单（需登录）", to: "/favorites" },
-  { title: "谱面播放", desc: "simai 谱面预览与播放", plannedFor: "M4" },
+  { title: "谱面确认", desc: "曲目详情页跳转 DXRating 看谱面视频", to: "/songs" },
   { title: "机厅", desc: "附近机厅查询", plannedFor: "M5" },
 ];
 </script>

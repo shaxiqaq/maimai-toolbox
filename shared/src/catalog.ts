@@ -69,6 +69,14 @@ export function baseSongId(id: number): number {
   return id >= 100000 ? id : id % 10000;
 }
 
+/**
+ * DXRating search for this song. Its chart dialog links to chart-preview videos (YouTube / Bilibili).
+ * DXRating uses its own song ids, so a title search is the only stable way in.
+ */
+export function chartPreviewUrl(song: Pick<Song, "title">): string {
+  return `https://dxrating.net/?q=${encodeURIComponent(song.title)}`;
+}
+
 /** Jacket image URL, served by our backend from a disk cache of LXNS assets (keyed by the shared base id). */
 export function jacketUrl(song: Pick<Song, "id" | "lxnsId">): string {
   return `/api/jacket/${song.lxnsId ?? baseSongId(song.id)}.png`;

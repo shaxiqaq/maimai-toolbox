@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { DIFFICULTY_NAMES } from "@mt/shared";
+import { chartPreviewUrl, DIFFICULTY_NAMES } from "@mt/shared";
 import { computed, onMounted } from "vue";
 import FavoriteButton from "@/components/FavoriteButton.vue";
 import LevelPill from "@/components/LevelPill.vue";
@@ -36,7 +36,18 @@ function fmt(n: number, digits: number): string {
             <span class="badge" :class="song.type.toLowerCase()">{{ isUtage ? "宴" : song.type }}</span>
             <span v-if="song.isNew" class="badge new">新曲（计入 B15）</span>
           </div>
-          <FavoriteButton :song-id="song.id" class="fav" />
+          <div class="actions">
+            <FavoriteButton :song-id="song.id" />
+            <a
+              :href="chartPreviewUrl(song)"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="preview"
+              title="在 DXRating 选择难度后可看 YouTube / Bilibili 谱面确认视频"
+            >
+              ▶ 谱面确认 ↗
+            </a>
+          </div>
           <dl>
             <dt>ID</dt><dd>{{ song.id }}</dd>
             <dt>BPM</dt><dd>{{ song.bpm }}</dd>
@@ -131,8 +142,21 @@ function fmt(n: number, digits: number): string {
   flex-wrap: wrap;
 }
 
-.fav {
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-top: 8px;
+}
+
+.preview {
+  display: inline-block;
+  padding: 4px 12px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
 }
 
 dl {
