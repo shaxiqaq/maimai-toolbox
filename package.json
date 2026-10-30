@@ -9,6 +9,7 @@
     "dev:web": "pnpm --filter ./web dev",
     "sync": "pnpm --filter ./server sync",
     "build": "pnpm --filter ./web build",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test"
   }
 }

@@ -2,7 +2,7 @@
 import { jacketUrl, type Song } from "@mt/shared";
 import { ref } from "vue";
 
-defineProps<{ song: Song; size?: number }>();
+defineProps<{ song: Pick<Song, "id" | "lxnsId">; alt?: string; size?: number }>();
 const failed = ref(false);
 </script>
 
@@ -11,7 +11,7 @@ const failed = ref(false);
     <img
       v-if="!failed"
       :src="jacketUrl(song)"
-      :alt="song.title"
+      :alt="alt ?? ''"
       loading="lazy"
       decoding="async"
       referrerpolicy="no-referrer"

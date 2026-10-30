@@ -9,8 +9,8 @@ interface Feature {
 
 const features: Feature[] = [
   { title: "曲库", desc: "搜索曲目、别名、定数和拟合难度", to: "/songs" },
-  { title: "B50", desc: "查询 Best 50 与 Rating", plannedFor: "M1" },
-  { title: "成绩", desc: "全部游玩记录与筛选", plannedFor: "M1" },
+  { title: "B50", desc: "查询 Best 50 与 Rating", to: "/b50" },
+  { title: "成绩", desc: "全部游玩记录与筛选（需授权水鱼/落雪）", plannedFor: "M2" },
   { title: "完成度", desc: "牌子与版本完成进度", plannedFor: "M2" },
   { title: "上分推荐", desc: "按当前 Rating 推荐目标谱面", plannedFor: "M2" },
   { title: "计算器", desc: "达成率、损失与 Rank", plannedFor: "M3" },

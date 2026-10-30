@@ -4,7 +4,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router";
 import LevelPill from "@/components/LevelPill.vue";
 import SongJacket from "@/components/SongJacket.vue";
-import { EMPTY_FILTER, searchSongs, type SongFilter } from "@/domain/search";
+import { EMPTY_FILTER, searchSongs, type SongFilter } from "@mt/shared";
 import { useCatalogStore } from "@/stores/catalog";
 
 const PAGE_SIZE = 60;
@@ -68,7 +68,13 @@ onBeforeUnmount(() => observer?.disconnect());
 <template>
   <main class="page">
     <div class="filters">
-      <input v-model.trim="filter.query" class="field search" type="search" placeholder="曲名 / 曲师 / 别名 / ID" />
+      <input
+        v-model.trim="filter.query"
+        class="field search"
+        type="search"
+        placeholder="曲名 / 曲师 / 别名 / ID，可加 bpm>180 ds:13.5~14 lv:14+"
+        title="条件语法：bpm>180、bpm:150~180、ds>=14、ds:13.5~13.9、lv:13+，可与关键词组合"
+      />
       <div class="selects">
         <select v-model="filter.type" class="field">
           <option value="">全部类型</option>
@@ -102,7 +108,7 @@ onBeforeUnmount(() => observer?.disconnect());
     <ul class="list">
       <li v-for="song in visible" :key="song.id">
         <RouterLink :to="`/songs/${song.id}`" class="card row">
-          <SongJacket :song="song" />
+          <SongJacket :song="song" :alt="song.title" />
           <div class="info">
             <div class="title-line">
               <span class="title">{{ song.title }}</span>

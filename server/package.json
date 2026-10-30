@@ -6,7 +6,8 @@
     "dev": "tsx watch src/main.ts",
     "start": "tsx src/main.ts",
     "sync": "tsx src/cli/sync.ts",
-    "typecheck": "tsc -p ."
+    "typecheck": "tsc -p .",
+    "test": "tsx --test src/*.test.ts"
   },
   "dependencies": {
     "@hono/node-server": "1.19.5",

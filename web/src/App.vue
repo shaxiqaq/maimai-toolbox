@@ -11,6 +11,7 @@ const themeLabel = computed(() => ({ system: "跟随系统", light: "浅色", da
     <div class="topbar-inner">
       <RouterLink to="/" class="brand">舞萌工具箱</RouterLink>
       <nav class="nav">
+        <RouterLink to="/b50">B50</RouterLink>
         <RouterLink to="/songs">曲库</RouterLink>
         <button class="theme" type="button" :title="`主题：${themeLabel}`" @click="cycle">
           {{ themeLabel }}

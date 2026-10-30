@@ -27,7 +27,7 @@ function fmt(n: number, digits: number): string {
 
     <template v-else>
       <section class="card head">
-        <SongJacket :song="song" :size="120" />
+        <SongJacket :song="song" :alt="song.title" :size="120" />
         <div class="meta">
           <h1>{{ song.title }}</h1>
           <p class="muted">{{ song.artist }}</p>
