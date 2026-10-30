@@ -62,4 +62,7 @@ pnpm invite 3                               # 生成 3 个线上邀请码
 
 账号安全：会话是随机令牌，数据库只存其 SHA-256，Cookie 为 HttpOnly + SameSite=Lax + Secure；写操作校验 Origin 防 CSRF；登录和注册失败按 IP / 用户名限流（15 分钟 10 次，记录在 D1 里）。
 
-设计与路线见 `../deepdive/00-复刻设计.md`。
+## 许可证
+
+本仓库的代码以 [MIT](LICENSE) 许可证开源。许可证只涵盖代码本身：maimai 的曲目、曲绘、谱面等内容版权归 SEGA，
+曲库与成绩数据来自水鱼查分器、落雪查分器，机厅数据来自 nearcade，使用时请遵守各自的条款。
