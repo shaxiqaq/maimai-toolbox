@@ -1,60 +1,122 @@
-/* Design tokens. Light by default; dark via system preference unless the user picked a theme. */
+/* Design tokens: a Material 3 style tonal palette around a blue seed (after UnionApp).
+   Light by default; dark via system preference unless the user picked a theme.
+   Surfaces are flat tonal fills; game colours (difficulty, rank) are shared by every page. */
 :root {
-  --bg: #f5f6f2;
-  --surface: #ffffff;
-  --surface-2: #eceee8;
-  --border: #dcdfd7;
-  --text: #1a1f1c;
-  --text-muted: #5b645f;
-  --accent: #0d8a78;
+  --bg: #f8f9ff;
+  --surface: #eef0f8;
+  --surface-2: #e6e8f0;
+  --surface-3: #dcdfe8;
+  --border: #dde1ea;
+  --text: #191c20;
+  --text-muted: #5b5f68;
+  --accent: #36618e;
+  --accent-grad: #36618e;
   --accent-contrast: #ffffff;
-  --accent-soft: #d5efe9;
-  --warn: #d9612f;
+  --accent-soft: #d3e4ff;
+  --on-accent-soft: #1b4975;
+  --warn: #ba1a1a;
+  --ok: #2e7d32;
+  --nav-bg: #f0f2fa;
 
-  --diff-0: #3fa34d;
-  --diff-1: #d99a00;
-  --diff-2: #e0474c;
-  --diff-3: #8c4fd6;
-  --diff-4: #b48be6;
-  --diff-utage: #d63a8f;
+  --diff-0: #1ea15d;
+  --diff-1: #e8a400;
+  --diff-2: #e9485d;
+  --diff-3: #9e45e2;
+  --diff-4: #c879f2;
+  --diff-utage: #e0368f;
 
-  --radius: 14px;
-  --radius-sm: 8px;
-  --shadow: 0 1px 2px rgb(0 0 0 / 0.05), 0 4px 16px rgb(0 0 0 / 0.04);
-  --font: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  --rank-gold: #c98a00;
+  --rank-rainbow: linear-gradient(90deg, #f43f5e, #f59e0b, #10b981, #3b82f6, #a855f7);
+
+  /* Tinted icon chips on the home grid. */
+  --tint-pink: #fde2ec;
+  --tint-orange: #ffe6d2;
+  --tint-blue: #d9e8ff;
+  --tint-purple: #ece0ff;
+  --tint-green: #d6f2e3;
+  --tint-yellow: #fff1c7;
+  --tint-ink-pink: #b4245a;
+  --tint-ink-orange: #b45309;
+  --tint-ink-blue: #2f5f95;
+  --tint-ink-purple: #6d3fc0;
+  --tint-ink-green: #1f7a4d;
+  --tint-ink-yellow: #8a6200;
+
+  --radius: 20px;
+  --radius-sm: 12px;
+  --shadow: none;
+  --shadow-lift: none;
+  --font: system-ui, -apple-system, "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  --font-num: "Roboto", "SF Pro Display", "Segoe UI", system-ui, sans-serif;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #121614;
-    --surface: #1b201d;
-    --surface-2: #242a27;
-    --border: #313834;
-    --text: #e7ebe8;
-    --text-muted: #9aa49e;
-    --accent: #3cc2ab;
-    --accent-contrast: #0b1311;
-    --accent-soft: #1d3a34;
-    --warn: #f08a5d;
-    --diff-4: #cdb0f2;
-    --shadow: none;
+    --bg: #111318;
+    --surface: #1d2024;
+    --surface-2: #272a2f;
+    --surface-3: #32353a;
+    --border: #2d3036;
+    --text: #e2e2e9;
+    --text-muted: #a9acb5;
+    --accent: #a0cafd;
+    --accent-grad: #a0cafd;
+    --accent-contrast: #003258;
+    --accent-soft: #1b4975;
+    --on-accent-soft: #d3e4ff;
+    --warn: #ffb4ab;
+    --ok: #81c995;
+    --nav-bg: #16181d;
+    --diff-1: #f6b40c;
+    --diff-4: #e0a3ff;
+    --rank-gold: #fbbf24;
+    --tint-pink: #4a2533;
+    --tint-orange: #4a3020;
+    --tint-blue: #1f3550;
+    --tint-purple: #362a52;
+    --tint-green: #1e3a2c;
+    --tint-yellow: #43381a;
+    --tint-ink-pink: #ffb1c8;
+    --tint-ink-orange: #ffc08f;
+    --tint-ink-blue: #a8c8ff;
+    --tint-ink-purple: #d3bbff;
+    --tint-ink-green: #8fd8b0;
+    --tint-ink-yellow: #f2d27a;
     color-scheme: dark;
   }
 }
 
 :root[data-theme="dark"] {
-  --bg: #121614;
-  --surface: #1b201d;
-  --surface-2: #242a27;
-  --border: #313834;
-  --text: #e7ebe8;
-  --text-muted: #9aa49e;
-  --accent: #3cc2ab;
-  --accent-contrast: #0b1311;
-  --accent-soft: #1d3a34;
-  --warn: #f08a5d;
-  --diff-4: #cdb0f2;
-  --shadow: none;
+  --bg: #111318;
+  --surface: #1d2024;
+  --surface-2: #272a2f;
+  --surface-3: #32353a;
+  --border: #2d3036;
+  --text: #e2e2e9;
+  --text-muted: #a9acb5;
+  --accent: #a0cafd;
+  --accent-grad: #a0cafd;
+  --accent-contrast: #003258;
+  --accent-soft: #1b4975;
+  --on-accent-soft: #d3e4ff;
+  --warn: #ffb4ab;
+  --ok: #81c995;
+  --nav-bg: #16181d;
+  --diff-1: #f6b40c;
+  --diff-4: #e0a3ff;
+  --rank-gold: #fbbf24;
+  --tint-pink: #4a2533;
+  --tint-orange: #4a3020;
+  --tint-blue: #1f3550;
+  --tint-purple: #362a52;
+  --tint-green: #1e3a2c;
+  --tint-yellow: #43381a;
+  --tint-ink-pink: #ffb1c8;
+  --tint-ink-orange: #ffc08f;
+  --tint-ink-blue: #a8c8ff;
+  --tint-ink-purple: #d3bbff;
+  --tint-ink-green: #8fd8b0;
+  --tint-ink-yellow: #f2d27a;
   color-scheme: dark;
 }

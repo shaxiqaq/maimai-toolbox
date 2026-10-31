@@ -231,7 +231,7 @@ onMounted(() => {
   padding: 6px 16px;
   border: 1px solid var(--accent);
   border-radius: 999px;
-  background: var(--accent);
+  background: var(--accent-grad);
   color: var(--accent-contrast);
   cursor: pointer;
 }

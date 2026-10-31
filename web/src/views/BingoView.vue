@@ -163,6 +163,10 @@ onMounted(() => void redraw());
 
 <template>
   <main class="page">
+    <header class="page-head">
+      <h1>Bingo 海报</h1>
+      <p>自定义 Bingo 表，可以按成绩自动生成</p>
+    </header>
     <div class="layout">
       <section class="preview card">
         <canvas ref="canvas" title="点格子编辑" @click="onCanvasClick" />
@@ -337,7 +341,7 @@ textarea.field {
 
 .primary {
   border: none;
-  background: var(--accent);
+  background: var(--accent-grad);
   color: var(--accent-contrast);
 }
 

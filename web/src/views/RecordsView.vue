@@ -59,6 +59,10 @@ onMounted(() => {
 
 <template>
   <main class="page">
+    <header class="page-head">
+      <h1>成绩</h1>
+      <p>全部成绩列表，可按难度、评级、FC/FS 筛选</p>
+    </header>
     <NeedsScores v-if="!player.scores" feature="成绩列表" />
 
     <template v-else>

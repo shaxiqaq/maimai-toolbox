@@ -130,7 +130,7 @@ textarea.field {
   padding: 6px 18px;
   border: 1px solid var(--accent);
   border-radius: 999px;
-  background: var(--accent);
+  background: var(--accent-grad);
   color: var(--accent-contrast);
   cursor: pointer;
 }

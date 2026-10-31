@@ -115,6 +115,10 @@ onMounted(() => void loadChildren("CN"));
 
 <template>
   <main class="page">
+    <header class="page-head">
+      <h1>机厅</h1>
+      <p>附近 / 按地区查找舞萌机厅，数据来自 nearcade</p>
+    </header>
     <div class="tabs">
       <button type="button" :class="{ on: mode === 'nearby' }" @click="mode = 'nearby'">附近的机厅</button>
       <button type="button" :class="{ on: mode === 'region' }" @click="mode = 'region'">按地区查找</button>
@@ -196,7 +200,7 @@ onMounted(() => void loadChildren("CN"));
 }
 
 .tabs button.on {
-  background: var(--accent);
+  background: var(--accent-grad);
   border-color: var(--accent);
   color: var(--accent-contrast);
 }
@@ -224,7 +228,7 @@ onMounted(() => void loadChildren("CN"));
   padding: 7px 16px;
   border: none;
   border-radius: 999px;
-  background: var(--accent);
+  background: var(--accent-grad);
   color: var(--accent-contrast);
   font-weight: 600;
   cursor: pointer;

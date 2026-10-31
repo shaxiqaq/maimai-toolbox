@@ -92,6 +92,10 @@ onMounted(() => {
 
 <template>
   <main class="page">
+    <header class="page-head">
+      <h1>完成度</h1>
+      <p>各等级的评级分布与版本完成进度</p>
+    </header>
     <NeedsScores v-if="!player.scores" feature="完成度" />
 
     <template v-else>
@@ -224,7 +228,7 @@ onMounted(() => {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: var(--accent);
+  background: var(--accent-grad);
 }
 
 .b-sssp,

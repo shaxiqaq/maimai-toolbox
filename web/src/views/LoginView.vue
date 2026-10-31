@@ -46,6 +46,11 @@ async function submit() {
 
 <template>
   <main class="page narrow">
+    <header class="login-head">
+      <span class="logo" aria-hidden="true">汐</span>
+      <h1>{{ mode === "login" ? "欢迎回来" : "注册账号" }}</h1>
+      <p class="muted">登录后可以使用收藏夹、云端存档和好友</p>
+    </header>
     <form class="card box" @submit.prevent="submit">
       <div class="modes">
         <button type="button" :class="{ on: mode === 'login' }" @click="mode = 'login'">登录</button>
@@ -88,6 +93,34 @@ async function submit() {
 </template>
 
 <style scoped>
+.login-head {
+  margin: 24px 0 18px;
+  text-align: center;
+}
+
+.login-head .logo {
+  display: inline-grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: var(--accent-soft);
+  color: var(--on-accent-soft);
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.login-head h1 {
+  margin: 12px 0 2px;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.login-head p {
+  margin: 0;
+  font-size: 13px;
+}
+
 .narrow {
   max-width: 420px;
 }
@@ -113,7 +146,7 @@ async function submit() {
 }
 
 .modes button.on {
-  background: var(--accent);
+  background: var(--accent-grad);
   border-color: var(--accent);
   color: var(--accent-contrast);
 }
@@ -139,7 +172,7 @@ label {
   min-height: 42px;
   border: none;
   border-radius: var(--radius-sm);
-  background: var(--accent);
+  background: var(--accent-grad);
   color: var(--accent-contrast);
   font-weight: 700;
   cursor: pointer;

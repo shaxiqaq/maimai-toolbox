@@ -3,6 +3,7 @@ import { summarizeB50, type PlayerB50 } from "@mt/shared";
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { useCatalogStore } from "@/stores/catalog";
 import RecordCard from "./RecordCard.vue";
+import { ratingTier } from "@/composables/ratingTier";
 
 /** Read-only B50 view (summary, B35/B15 tabs, image export) for saved or shared snapshots. */
 const props = defineProps<{ b50: PlayerB50; title?: string }>();
@@ -44,7 +45,7 @@ onBeforeUnmount(() => imageUrl.value && URL.revokeObjectURL(imageUrl.value));
     <div class="muted when">{{ b50.nickname || b50.username }} · 数据时间 {{ new Date(b50.fetchedAt).toLocaleString("zh-CN") }}</div>
     <div class="total">
       <span class="muted">DX Rating</span>
-      <b>{{ summary.total }}</b>
+      <b class="rating-plate" :class="`tier-${ratingTier(summary.total)}`">{{ summary.total }}</b>
     </div>
     <dl class="parts">
       <div><dt>旧版本 B35</dt><dd>{{ summary.b35 }}</dd></div>
@@ -77,7 +78,7 @@ onBeforeUnmount(() => imageUrl.value && URL.revokeObjectURL(imageUrl.value));
 
 <style scoped>
 .summary {
-  padding: 14px;
+  padding: 18px;
   margin-bottom: 12px;
   display: grid;
   gap: 8px;
@@ -87,6 +88,11 @@ onBeforeUnmount(() => imageUrl.value && URL.revokeObjectURL(imageUrl.value));
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.who strong {
+  font-size: 19px;
+  font-weight: 700;
 }
 
 .when {
@@ -100,10 +106,8 @@ onBeforeUnmount(() => imageUrl.value && URL.revokeObjectURL(imageUrl.value));
 }
 
 .total b {
-  font-size: 34px;
-  line-height: 1;
-  color: var(--accent);
-  font-variant-numeric: tabular-nums;
+  font-size: 30px;
+  line-height: 1.2;
 }
 
 .parts {
@@ -181,7 +185,7 @@ onBeforeUnmount(() => imageUrl.value && URL.revokeObjectURL(imageUrl.value));
 }
 
 .tabs button.on {
-  background: var(--accent);
+  background: var(--accent-grad);
   border-color: var(--accent);
   color: var(--accent-contrast);
 }

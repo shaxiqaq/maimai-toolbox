@@ -83,8 +83,11 @@ watch(
 
 <template>
   <main class="page">
-    <section class="card intro">
+    <header class="page-head">
       <h1>能力雷达</h1>
+      <p>按谱面类型看你相对擅长和薄弱的地方</p>
+    </header>
+    <section class="card intro">
       <p class="muted small">
         按谱面标签（社区投票，加上诈称、高物量、触摸、绝赞段这几个按谱面数据自动判断的标签），把你在每类谱面上的达成率和水鱼玩家平均水平比较。每个方向都相对于你自己的整体水平：
         外凸是你相对擅长的类型，内凹是相对薄弱的类型。每个标签至少要有 3 张你玩过的谱面才会画出来。

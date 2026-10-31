@@ -69,6 +69,10 @@ watch(
 
 <template>
   <main class="page">
+    <header class="page-head">
+      <h1>好友</h1>
+      <p>互加好友，分享成绩，逐张谱面对比</p>
+    </header>
     <section v-if="auth.ready && !auth.user" class="card needs">
       <p>好友功能需要账号：互加好友后，可以逐张谱面对比双方的成绩。</p>
       <RouterLink :to="{ path: '/login', query: { next: '/friends' } }" class="go">登录或注册 →</RouterLink>
@@ -229,7 +233,7 @@ watch(
 }
 
 .primary {
-  background: var(--accent);
+  background: var(--accent-grad);
   color: var(--accent-contrast);
 }
 

@@ -79,6 +79,10 @@ onBeforeUnmount(() => clearInterval(timer));
 
 <template>
   <main class="page">
+    <header class="page-head">
+      <h1>随机抽歌</h1>
+      <p>设好条件，交给运气</p>
+    </header>
     <section class="card controls">
       <div class="row">
         <label>定数
@@ -195,7 +199,7 @@ onBeforeUnmount(() => clearInterval(timer));
   padding: 8px 28px;
   border: none;
   border-radius: 999px;
-  background: var(--accent);
+  background: var(--accent-grad);
   color: var(--accent-contrast);
   font-weight: 700;
   font-size: 15px;

@@ -61,6 +61,10 @@ onMounted(() => {
 
 <template>
   <main class="page">
+    <header class="page-head">
+      <h1>上分推荐</h1>
+      <p>按你的 B50 底分，找出最容易推分的谱面</p>
+    </header>
     <section v-if="!player.b50" class="card needs">
       <p v-if="player.loading" class="muted">正在加载成绩…</p>
       <template v-else>

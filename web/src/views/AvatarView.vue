@@ -206,6 +206,10 @@ onBeforeUnmount(() => imageUrl.value && URL.revokeObjectURL(imageUrl.value));
 
 <template>
   <main class="page">
+    <header class="page-head">
+      <h1>头像制作</h1>
+      <p>照片加外圈、名字与 Rating 徽章</p>
+    </header>
     <div class="layout">
       <section class="card stage">
         <canvas
@@ -354,7 +358,7 @@ onBeforeUnmount(() => imageUrl.value && URL.revokeObjectURL(imageUrl.value));
 
 .primary {
   border: none;
-  background: var(--accent);
+  background: var(--accent-grad);
   color: var(--accent-contrast);
 }
 

@@ -6,6 +6,7 @@ import { useCatalogStore } from "@/stores/catalog";
 import { usePlayerStore, type LookupKind } from "@/stores/player";
 import { api } from "@/api";
 import { useAuthStore } from "@/stores/auth";
+import { ratingTier } from "@/composables/ratingTier";
 
 const player = usePlayerStore();
 const catalog = useCatalogStore();
@@ -100,6 +101,10 @@ onMounted(() => {
 
 <template>
   <main class="page">
+    <header class="page-head">
+      <h1>B50 查询</h1>
+      <p>水鱼用户名 / QQ 或落雪个人密钥，算出 Best 50 与 DX Rating</p>
+    </header>
     <form class="card lookup" @submit.prevent="submit">
       <div class="kinds" role="tablist">
         <button type="button" :class="{ on: kind === 'username' }" @click="kind = 'username'">水鱼用户名</button>
@@ -153,7 +158,7 @@ onMounted(() => {
         </div>
         <div class="total">
           <span class="muted">DX Rating</span>
-          <b>{{ summary.total }}</b>
+          <b class="rating-plate" :class="`tier-${ratingTier(summary.total)}`">{{ summary.total }}</b>
         </div>
         <dl class="parts">
           <div><dt>旧版本 B35</dt><dd>{{ summary.b35 }}</dd></div>
@@ -239,7 +244,7 @@ onMounted(() => {
 
 .kinds button.on,
 .tabs button.on {
-  background: var(--accent);
+  background: var(--accent-grad);
   border-color: var(--accent);
   color: var(--accent-contrast);
 }
@@ -259,7 +264,7 @@ onMounted(() => {
   padding: 0 18px;
   border: none;
   border-radius: var(--radius-sm);
-  background: var(--accent);
+  background: var(--accent-grad);
   color: var(--accent-contrast);
   font-weight: 600;
   cursor: pointer;
@@ -366,8 +371,8 @@ onMounted(() => {
 }
 
 .summary {
-  margin: 12px 0;
-  padding: 14px;
+  margin: 14px 0;
+  padding: 18px;
   display: grid;
   gap: 8px;
 }
@@ -378,6 +383,11 @@ onMounted(() => {
   gap: 8px;
 }
 
+.who strong {
+  font-size: 19px;
+  font-weight: 700;
+}
+
 .total {
   display: flex;
   align-items: baseline;
@@ -385,10 +395,8 @@ onMounted(() => {
 }
 
 .total b {
-  font-size: 34px;
-  line-height: 1;
-  color: var(--accent);
-  font-variant-numeric: tabular-nums;
+  font-size: 30px;
+  line-height: 1.2;
 }
 
 .parts {

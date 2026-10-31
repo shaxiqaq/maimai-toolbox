@@ -92,6 +92,10 @@ onMounted(() => {
 
 <template>
   <main class="page">
+    <header class="page-head">
+      <h1>牌子与收藏品</h1>
+      <p>将 / 極 / 神 / 舞舞进度，以及称号、头像、背景</p>
+    </header>
     <div class="tabs">
       <button v-for="k in COLLECTION_KINDS" :key="k" type="button" :class="{ on: kind === k }" @click="kind = k">
         {{ COLLECTION_LABELS[k] }}
@@ -186,7 +190,7 @@ onMounted(() => {
 }
 
 .tabs button.on {
-  background: var(--accent);
+  background: var(--accent-grad);
   border-color: var(--accent);
   color: var(--accent-contrast);
 }
@@ -334,7 +338,7 @@ onMounted(() => {
 .bar i {
   display: block;
   height: 100%;
-  background: var(--accent);
+  background: var(--accent-grad);
 }
 
 .num {

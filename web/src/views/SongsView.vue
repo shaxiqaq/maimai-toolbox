@@ -84,7 +84,11 @@ onBeforeUnmount(() => observer?.disconnect());
 
 <template>
   <main class="page">
-    <div class="filters">
+    <header class="page-head">
+      <h1>曲库</h1>
+      <p>曲目、别名、定数与拟合难度，点进去看谱面详情和标签</p>
+    </header>
+    <div class="card filters">
       <input
         v-model.trim="filter.query"
         class="field search"
@@ -163,8 +167,14 @@ onBeforeUnmount(() => observer?.disconnect());
 <style scoped>
 .filters {
   display: grid;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 14px;
+}
+
+.search {
+  min-height: 46px;
+  font-size: 15px;
 }
 
 .selects {
@@ -219,10 +229,6 @@ onBeforeUnmount(() => observer?.disconnect());
   align-items: center;
 }
 
-.row:hover {
-  border-color: var(--accent);
-}
-
 .info {
   min-width: 0;
   flex: 1;
@@ -235,7 +241,7 @@ onBeforeUnmount(() => observer?.disconnect());
 }
 
 .title {
-  font-weight: 600;
+  font-weight: 700;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

@@ -69,7 +69,7 @@ async function addFolder() {
 }
 
 .btn.on {
-  background: var(--accent);
+  background: var(--accent-grad);
   color: var(--accent-contrast);
 }
 

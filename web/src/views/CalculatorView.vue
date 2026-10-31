@@ -82,6 +82,10 @@ const fmt4 = (n: number) => n.toFixed(4);
 
 <template>
   <main class="page">
+    <header class="page-head">
+      <h1>计算器</h1>
+      <p>达成率、容错与单曲 Rating</p>
+    </header>
     <section class="card source">
       <ChartPicker v-model="picked" />
       <div v-if="picked" class="chart-meta muted">
@@ -268,7 +272,7 @@ const fmt4 = (n: number) => n.toFixed(4);
 }
 
 .tabs button.on {
-  background: var(--accent);
+  background: var(--accent-grad);
   border-color: var(--accent);
   color: var(--accent-contrast);
 }

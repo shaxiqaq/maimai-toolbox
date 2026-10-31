@@ -14,12 +14,20 @@ const stars = computed(() => {
   return notes ? dxStars(props.record.dxScore, notes) : 0;
 });
 const jacketSong = computed(() => song.value ?? { id: props.record.songId, lxnsId: null });
+const diffColor = computed(() => (props.record.type === "UTAGE" ? "var(--diff-utage)" : `var(--diff-${props.record.difficulty})`));
+/** SSS and above glow rainbow, S to SS+ are gold, like the in-game rank badges. */
+const rankStyle = computed(() => {
+  const r = props.record.rank;
+  return r === "sss" || r === "sssp" ? "rainbow" : r.startsWith("s") ? "gold" : "";
+});
 </script>
 
 <template>
-  <RouterLink :to="`/songs/${record.songId}`" class="card rec" :class="`rank-${record.rank}`">
-    <span class="idx">#{{ index + 1 }}</span>
-    <SongJacket :song="jacketSong" :alt="record.title" :size="64" />
+  <RouterLink :to="`/songs/${record.songId}`" class="card rec" :style="{ '--diff': diffColor }">
+    <div class="cover">
+      <SongJacket :song="jacketSong" :alt="record.title" :size="68" />
+      <span class="idx">{{ index + 1 }}</span>
+    </div>
     <div class="body">
       <div class="title">{{ record.title }}</div>
       <div class="line">
@@ -28,17 +36,17 @@ const jacketSong = computed(() => song.value ?? { id: props.record.songId, lxnsI
         <span class="badge" :class="record.type.toLowerCase()">{{ record.type === "UTAGE" ? "宴" : record.type }}</span>
       </div>
       <div class="line score">
-        <b>{{ record.achievement.toFixed(4) }}%</b>
-        <span class="rank">{{ RANK_LABELS[record.rank] }}</span>
+        <b>{{ record.achievement.toFixed(4) }}<small>%</small></b>
+        <span class="rank-text" :class="rankStyle">{{ RANK_LABELS[record.rank] }}</span>
       </div>
-      <div class="line flags">
-        <span v-if="record.combo" class="flag combo">{{ COMBO_LABELS[record.combo] }}</span>
+      <div v-if="record.combo || record.sync || stars" class="line flags">
+        <span v-if="record.combo" class="flag combo" :class="record.combo">{{ COMBO_LABELS[record.combo] }}</span>
         <span v-if="record.sync" class="flag sync">{{ SYNC_LABELS[record.sync] }}</span>
-        <span v-if="stars" class="stars" :title="`DX 分 ${record.dxScore}`">{{ "★".repeat(stars) }}</span>
+        <span v-if="stars" class="stars" :title="`DX 分 ${record.dxScore}`">{{ "✦".repeat(stars) }}</span>
       </div>
     </div>
     <div class="ra">
-      <span class="muted">Rating</span>
+      <span>RATING</span>
       <b>{{ record.rating }}</b>
     </div>
   </RouterLink>
@@ -48,32 +56,56 @@ const jacketSong = computed(() => song.value ?? { id: props.record.songId, lxnsI
 .rec {
   position: relative;
   display: flex;
-  gap: 10px;
-  padding: 10px;
+  gap: 12px;
+  padding: 10px 12px 10px 10px;
   align-items: center;
+  overflow: hidden;
 }
 
-.rec:hover {
-  border-color: var(--accent);
+.rec::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--diff);
+}
+
+.cover {
+  position: relative;
+  flex: none;
+  padding: 2px;
+  border-radius: 12px;
+  background: var(--diff);
+}
+
+.cover :deep(.jacket) {
+  border-radius: 10px;
 }
 
 .idx {
   position: absolute;
-  top: 4px;
-  left: 6px;
-  font-size: 10px;
-  color: var(--text-muted);
+  left: -2px;
+  bottom: -2px;
+  min-width: 22px;
+  padding: 0 5px;
+  border-radius: 0 8px 0 10px;
+  background: var(--diff);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  text-align: center;
+  font-family: var(--font-num);
 }
 
 .body {
   flex: 1;
   min-width: 0;
   display: grid;
-  gap: 2px;
+  gap: 3px;
 }
 
 .title {
-  font-weight: 600;
+  font-weight: 700;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -87,61 +119,71 @@ const jacketSong = computed(() => song.value ?? { id: props.record.songId, lxnsI
 }
 
 .ds {
-  font-weight: 600;
+  font-weight: 700;
+  font-family: var(--font-num);
 }
 
 .score b {
-  font-size: 14px;
+  font-size: 16px;
+  font-family: var(--font-num);
   font-variant-numeric: tabular-nums;
 }
 
-.rank {
-  font-weight: 700;
+.score small {
+  font-size: 11px;
+  margin-left: 1px;
   color: var(--text-muted);
 }
 
-.rank-sssp .rank,
-.rank-sss .rank {
-  color: var(--warn);
-}
-
-.rank-ssp .rank,
-.rank-ss .rank {
-  color: var(--accent);
+.score .rank-text {
+  font-size: 15px;
 }
 
 .flag {
-  padding: 0 5px;
-  border-radius: 4px;
-  font-weight: 700;
-  font-size: 11px;
+  padding: 0 6px;
+  border-radius: 5px;
+  font-weight: 800;
+  font-size: 10.5px;
+  line-height: 17px;
 }
 
 .flag.combo {
-  background: color-mix(in srgb, var(--diff-1) 22%, transparent);
-  color: var(--diff-1);
+  background: color-mix(in srgb, var(--ok) 16%, transparent);
+  color: var(--ok);
+}
+
+.flag.combo.ap,
+.flag.combo.app {
+  background: linear-gradient(135deg, #fbbf24, #f97316);
+  color: #fff;
 }
 
 .flag.sync {
-  background: color-mix(in srgb, var(--diff-3) 18%, transparent);
-  color: var(--diff-3);
+  background: color-mix(in srgb, #3b82f6 16%, transparent);
+  color: #3b82f6;
 }
 
 .stars {
-  color: var(--diff-1);
-  letter-spacing: -1px;
+  color: var(--rank-gold);
+  font-size: 11px;
 }
 
 .ra {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  font-size: 11px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
 }
 
 .ra b {
-  font-size: 20px;
+  font-size: 22px;
   line-height: 1.1;
+  letter-spacing: 0;
+  color: var(--text);
+  font-family: var(--font-num);
   font-variant-numeric: tabular-nums;
 }
 </style>

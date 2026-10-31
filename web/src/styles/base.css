@@ -4,15 +4,23 @@
   box-sizing: border-box;
 }
 
-html,
+html {
+  background: var(--bg);
+}
+
 body {
   margin: 0;
+  min-height: 100vh;
   background: var(--bg);
   color: var(--text);
   font-family: var(--font);
-  line-height: 1.5;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 a {
@@ -22,9 +30,28 @@ a {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
   color: inherit;
+}
+
+button {
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.1s ease;
+}
+
+button:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 img {
@@ -32,17 +59,31 @@ img {
   max-width: 100%;
 }
 
-.page {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 16px 16px calc(32px + env(safe-area-inset-bottom));
+h1,
+h2,
+h3 {
+  letter-spacing: 0.01em;
 }
 
+.page {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 20px 16px calc(40px + env(safe-area-inset-bottom));
+}
+
+/* Flat tonal surface; the 1px transparent border keeps sizes stable when a page colours it. */
 .card {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
+}
+
+a.card {
+  transition: background-color 0.15s ease;
+}
+
+a.card:hover {
+  background: var(--surface-2);
 }
 
 .muted {
@@ -51,33 +92,58 @@ img {
 
 .field {
   width: 100%;
-  min-height: 40px;
-  padding: 8px 12px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  min-height: 44px;
+  padding: 8px 16px;
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  border-radius: 14px;
   outline: none;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.field:hover {
+  background: var(--surface-3);
 }
 
 .field:focus {
   border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+select.field {
+  cursor: pointer;
+}
+
+input[type="checkbox"],
+input[type="radio"],
+input[type="range"] {
+  accent-color: var(--accent);
 }
 
 .badge {
   display: inline-flex;
   align-items: center;
-  padding: 0 6px;
+  padding: 0 7px;
   height: 20px;
   border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   background: var(--surface-2);
   color: var(--text-muted);
 }
 
 .badge.dx {
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: var(--tint-orange);
+  color: var(--tint-ink-orange);
+}
+
+.badge.sd {
+  background: var(--tint-blue);
+  color: var(--tint-ink-blue);
 }
 
 .badge.utage {
@@ -86,6 +152,104 @@ img {
 }
 
 .badge.new {
-  background: color-mix(in srgb, var(--warn) 18%, transparent);
+  background: color-mix(in srgb, var(--warn) 16%, transparent);
   color: var(--warn);
+}
+
+/* ---- Page headings ---- */
+
+.page-head {
+  margin: 4px 0 18px;
+}
+
+.page-head h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.page-head p {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+/* ---- Rank text: S..SS+ gold, SSS/SSS+ rainbow ---- */
+
+.rank-text {
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+}
+
+.rank-text.gold {
+  color: var(--rank-gold);
+}
+
+.rank-text.rainbow {
+  background: var(--rank-rainbow);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ---- Scrollbars ---- */
+
+* {
+  scrollbar-color: var(--surface-3) transparent;
+  scrollbar-width: thin;
+}
+
+/* ---- DX Rating plate (see composables/ratingTier.ts) ---- */
+
+.rating-plate {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 14px;
+  border-radius: 12px;
+  font-family: var(--font-num);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  color: #fff;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 0.5);
+  box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.35);
+  background: linear-gradient(135deg, #38bdf8, #0284c7);
+}
+
+.rating-plate.tier-green {
+  background: linear-gradient(135deg, #4ade80, #16a34a);
+}
+
+.rating-plate.tier-orange {
+  background: linear-gradient(135deg, #fdba74, #ea580c);
+}
+
+.rating-plate.tier-red {
+  background: linear-gradient(135deg, #fb7185, #dc2626);
+}
+
+.rating-plate.tier-purple {
+  background: linear-gradient(135deg, #c084fc, #7e22ce);
+}
+
+.rating-plate.tier-bronze {
+  background: linear-gradient(135deg, #e7a46b, #9a5523);
+}
+
+.rating-plate.tier-silver {
+  background: linear-gradient(135deg, #e2e8f0, #8a97a8);
+}
+
+.rating-plate.tier-gold {
+  background: linear-gradient(135deg, #fde68a, #d99a00);
+}
+
+.rating-plate.tier-platinum {
+  background: linear-gradient(135deg, #e0f7ff, #8fd3ea 50%, #c4b5fd);
+}
+
+.rating-plate.tier-rainbow {
+  background: linear-gradient(120deg, #f472b6, #fbbf24, #34d399, #38bdf8, #a78bfa);
 }

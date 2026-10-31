@@ -315,7 +315,7 @@ onMounted(() => {
 }
 
 .split .w {
-  background: var(--accent);
+  background: var(--accent-grad);
 }
 
 .split .t {
@@ -343,7 +343,7 @@ onMounted(() => {
 }
 
 .tabs button.on {
-  background: var(--accent);
+  background: var(--accent-grad);
   border-color: var(--accent);
   color: var(--accent-contrast);
 }

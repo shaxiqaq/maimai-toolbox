@@ -6,6 +6,7 @@ import {
   constantChanges,
   DIFFICULTY_NAMES,
   fetchConstantsAt,
+  jacketUrl,
   popularityRanks,
   songPlayCount,
   TAG_GROUPS,
@@ -125,7 +126,7 @@ function fmt(n: number, digits: number): string {
     <p v-else-if="!song" class="state muted">找不到 ID 为 {{ id }} 的曲目</p>
 
     <template v-else>
-      <section class="card head">
+      <section class="card head" :style="{ '--cover': `url(${jacketUrl(song)})` }">
         <SongJacket :song="song" :alt="song.title" :size="120" />
         <div class="meta">
           <h1>{{ song.title }}</h1>
@@ -170,7 +171,12 @@ function fmt(n: number, digits: number): string {
       <section class="block">
         <h2>谱面</h2>
         <div class="charts">
-          <article v-for="c in song.charts" :key="c.difficulty" class="card chart">
+          <article
+            v-for="c in song.charts"
+            :key="c.difficulty"
+            class="card chart"
+            :style="{ '--diff': isUtage ? 'var(--diff-utage)' : `var(--diff-${c.difficulty})` }"
+          >
             <header>
               <LevelPill :difficulty="c.difficulty" :level="c.level" :utage="isUtage" />
               <strong>{{ isUtage ? "宴" : DIFFICULTY_NAMES[c.difficulty] }}</strong>
@@ -291,9 +297,30 @@ function fmt(n: number, digits: number): string {
 }
 
 .head {
+  position: relative;
+  overflow: hidden;
   display: flex;
-  gap: 16px;
-  padding: 16px;
+  gap: 18px;
+  padding: 18px;
+}
+
+/* Blurred jacket behind the header. */
+.head::before {
+  content: "";
+  position: absolute;
+  inset: -40px;
+  background: var(--cover) center / cover;
+  filter: blur(36px) saturate(1.4);
+  opacity: 0.32;
+  pointer-events: none;
+}
+
+.head > * {
+  position: relative;
+}
+
+.head :deep(.jacket) {
+  border-radius: 16px;
 }
 
 .meta {
@@ -302,7 +329,8 @@ function fmt(n: number, digits: number): string {
 
 .meta h1 {
   margin: 0;
-  font-size: 20px;
+  font-size: 22px;
+  font-weight: 800;
   line-height: 1.3;
   overflow-wrap: anywhere;
 }
@@ -354,8 +382,20 @@ dd {
 }
 
 .block h2 {
-  font-size: 15px;
-  margin: 20px 0 8px;
+  font-size: 16px;
+  font-weight: 800;
+  margin: 22px 2px 10px;
+}
+
+.block h2::before {
+  content: "";
+  display: inline-block;
+  width: 4px;
+  height: 14px;
+  margin-right: 8px;
+  border-radius: 2px;
+  background: var(--accent);
+  vertical-align: -1px;
 }
 
 .aliases {
@@ -377,7 +417,21 @@ dd {
 }
 
 .chart {
-  padding: 12px;
+  position: relative;
+  overflow: hidden;
+  padding: 14px 14px 14px 18px;
+}
+
+.chart::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--diff);
+}
+
+.chart header strong {
+  color: var(--diff);
 }
 
 .chart header {
@@ -404,8 +458,15 @@ dd {
   font-size: 12px;
 }
 
+.stats div {
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
 .stats b {
-  font-size: 15px;
+  font-size: 16px;
+  font-family: var(--font-num);
 }
 
 .tags {
@@ -472,7 +533,7 @@ dd {
 }
 
 .tag.pick.mine {
-  background: var(--accent);
+  background: var(--accent-grad);
   color: var(--accent-contrast);
 }
 

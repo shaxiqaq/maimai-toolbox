@@ -78,6 +78,10 @@ watch(
 
 <template>
   <main class="page">
+    <header class="page-head">
+      <h1>管理后台</h1>
+      <p>发布公告，处理反馈</p>
+    </header>
     <p v-if="auth.ready && !auth.isAdmin" class="state muted">
       这个页面只对管理员开放。管理员在 <code>worker/wrangler.jsonc</code> 的 <code>ADMIN_USERNAMES</code> 里设置。
     </p>
@@ -185,7 +189,7 @@ textarea.field {
   padding: 6px 16px;
   border: 1px solid var(--accent);
   border-radius: 999px;
-  background: var(--accent);
+  background: var(--accent-grad);
   color: var(--accent-contrast);
   cursor: pointer;
 }

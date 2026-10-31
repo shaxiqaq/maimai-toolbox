@@ -57,6 +57,10 @@ onMounted(() => void catalog.load());
 
 <template>
   <main class="page">
+    <header class="page-head">
+      <h1>收藏夹</h1>
+      <p>云同步的歌单</p>
+    </header>
     <section v-if="auth.ready && !auth.user" class="card needs">
       <p>收藏夹保存在你的账号里，可以在多台设备之间同步。</p>
       <RouterLink :to="{ path: '/login', query: { next: '/favorites' } }" class="go">登录或注册 →</RouterLink>
@@ -149,7 +153,7 @@ onMounted(() => void catalog.load());
 }
 
 .chip.on {
-  background: var(--accent);
+  background: var(--accent-grad);
   border-color: var(--accent);
   color: var(--accent-contrast);
 }
